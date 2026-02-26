@@ -15,7 +15,7 @@ pip install panda3d-steamworks
 ### From source
 
 ```bash
-git clone --recurse-submodules https://github.com/<your-org>/panda3d-steamworks.git
+git clone --recurse-submodules https://github.com/DigitalDescent/panda3d-steamworks.git
 cd panda3d-steamworks
 pip install .
 ```
