@@ -41,10 +41,6 @@ if SteamApps.init():
 > directory (or your game must be launched through Steam) for `SteamApps.init()`
 > to succeed.
 
-## API
-
-The module currently wraps the Steamworks `ISteamApps` interface via the `SteamApps` class. Methods follow the Steamworks naming convention converted to `snake_case`. See the [Steamworks ISteamApps documentation](https://partner.steamgames.com/doc/api/ISteamApps) for full details.
-
 ## Requirements
 
 - [Panda3D SDK](https://www.panda3d.org/download/) (with headers — the pip `panda3d` package alone is **not** sufficient for building from source)
