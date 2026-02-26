@@ -1,0 +1,140 @@
+name: Build and Publish
+
+on:
+  push:
+    branches: [master, main]
+    tags: ["v*"]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+# ── Panda3D SDK configuration ──────────────────────────────
+# Building native C++ modules requires the full Panda3D SDK
+# (pip-installed panda3d does NOT ship .lib files or headers).
+# The SDK bundles its own Python, which we use for every step.
+env:
+  P3D_VERSION: "1.10.15"
+  # winget installs to C:\Panda3D-<ver>-x64 by default
+  P3D_DIR: "C:\\Panda3D-1.10.15-x64"
+
+permissions:
+  contents: read
+
+jobs:
+  # ================================================================
+  # Windows build
+  # ================================================================
+  build-windows:
+    name: Windows Build
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Panda3D SDK
+        shell: pwsh
+        run: |
+          Write-Host "Installing Panda3D SDK ${{ env.P3D_VERSION }} via winget ..."
+          winget install --id Panda3D.Panda3D --version ${{ env.P3D_VERSION }} `
+            --accept-source-agreements --accept-package-agreements --silent
+          # Verify the SDK landed
+          if (-not (Test-Path "${{ env.P3D_DIR }}\python\python.exe")) {
+            Write-Error "SDK Python not found at ${{ env.P3D_DIR }}\python\python.exe"
+            # Show what was actually installed for debugging
+            Get-ChildItem "C:\Panda3D*" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+            exit 1
+          }
+          Write-Host "SDK installed successfully at ${{ env.P3D_DIR }}"
+
+      - name: Install interrogate tools
+        shell: pwsh
+        run: |
+          & "${{ env.P3D_DIR }}\python\python.exe" -m pip install --upgrade pip setuptools wheel
+          & "${{ env.P3D_DIR }}\python\python.exe" -m pip install panda3d-interrogate
+
+      - name: Verify Panda3D SDK
+        shell: pwsh
+        run: |
+          $py = "${{ env.P3D_DIR }}\python\python.exe"
+          & $py -c "import panda3d.core; print('Panda3D', panda3d.core.PandaSystem.get_version_string())"
+          & $py -c "import sys; print('Python', sys.version)"
+          & $py -c "import shutil; print('interrogate:', shutil.which('interrogate'))"
+          Write-Host "SDK root contents:"
+          Get-ChildItem "${{ env.P3D_DIR }}" -Name
+
+      - name: Build wheel
+        shell: pwsh
+        run: |
+          $py = "${{ env.P3D_DIR }}\python\python.exe"
+          & $py -m pip install build
+          & $py -m build --wheel --no-isolation
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-windows
+          path: dist/*.whl
+          if-no-files-found: error
+
+  # ================================================================
+  # Build sdist (source distribution)
+  # ================================================================
+  build-sdist:
+    name: Source Distribution
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist
+        run: |
+          pip install build
+          python -m build --sdist
+
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  # ================================================================
+  # Publish to PyPI (only on tagged releases)
+  # ================================================================
+  publish:
+    name: Publish to PyPI
+    needs: [build-windows, build-sdist]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      id-token: write  # required for trusted publishing
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/panda3d-steamworks
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+

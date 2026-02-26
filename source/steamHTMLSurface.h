@@ -9,20 +9,15 @@
 #include <string>
 
 ////////////////////////////////////////////////////////////////////
-//       Class : SteamController
-// Description : Wrapper around ISteamController.
+//       Class : SteamHTMLSurface
+// Description : Wrapper around ISteamHTMLSurface.
 ////////////////////////////////////////////////////////////////////
-class EXPORT_CLASS SteamController {
+class EXPORT_CLASS SteamHTMLSurface {
 PUBLISHED:
   static bool init();
   static bool shutdown();
-  static void run_frame();
-  static std::string get_glyph_for_action_origin(int origin);
-  static std::string get_string_for_action_origin(int origin);
-  static std::string get_string_for_xbox_origin(int origin);
-  static std::string get_glyph_for_xbox_origin(int origin);
-  static int translate_action_origin(int destination_input_type, int source_origin);
+  static void set_cookie(const std::string & hostname, const std::string & key, const std::string & value, const std::string & path, unsigned int expires, bool secure, bool http_only);
 
 private:
-  SteamController() = delete;
+  SteamHTMLSurface() = delete;
 };

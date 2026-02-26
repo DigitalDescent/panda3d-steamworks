@@ -299,6 +299,11 @@ class CMakeBuild(_build_ext):
         super().run()
 
     def build_extension(self, ext):
+        # ---- 0. Run code generation from steam_api.json --------------------
+        from codegen import run_codegen
+        print("Running Steamworks code generation …")
+        run_codegen(root_dir=ROOT_DIR)
+
         # ---- 1. Build config dict from top-of-file constants ----------------
         config = {
             "module_name": MODULE_NAME,
