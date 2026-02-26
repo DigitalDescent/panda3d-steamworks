@@ -10,6 +10,7 @@ import locale
 import sys
 import subprocess
 import platform
+import shutil
 
 from os.path import dirname, realpath, join, isdir, isfile
 from os import makedirs
@@ -55,7 +56,29 @@ MSVC_VERSIONS = [
     MSVCVersion(1929, "Visual Studio 16 2019", "vc142"),
 
     MSVCVersion(1930, "Visual Studio 17 2022", "vc143"),
-    MSVCVersion(1931, "Visual Studio 17 2022", "vc143")
+    MSVCVersion(1931, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1932, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1933, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1934, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1935, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1936, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1937, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1938, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1939, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1940, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1941, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1942, "Visual Studio 17 2022", "vc143"),
+
+    MSVCVersion(1950, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1951, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1952, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1953, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1954, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1955, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1956, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1957, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1958, "Visual Studio 18 2026", "vc144"),
+    MSVCVersion(1959, "Visual Studio 18 2026", "vc144"),
 ]
 
 def get_output_name():
@@ -132,10 +155,46 @@ def find_in_sdk(folder, filename, on_error=""):
     """ Finds the required folder in the sdk, requiring that it contains the given filename """
     return first_existing_path([folder], required_file=filename, base_dir=get_panda_sdk_path(), on_error=on_error)
 
-def get_panda_bin_path():
-    """ Returns the path to the panda3d binaries """
+def get_python_scripts_dir():
+    """ Returns the directory where pip-installed scripts/binaries are placed """
     if is_windows():
-        return find_in_sdk("bin", "interrogate.exe", on_error="Failed to find binary path")
+        return join(dirname(sys.executable), "Scripts")
+    else:
+        return join(dirname(sys.executable), "..", "bin")
+
+
+def _find_interrogate_dir():
+    """ Finds the directory containing the interrogate binary, checking pip install
+    locations first, then falling back to the Panda3D SDK. Returns the directory path. """
+    exe_suffix = ".exe" if is_windows() else ""
+    interrogate_name = "interrogate" + exe_suffix
+
+    # 1. Check pip-installed location (panda3d-interrogate package)
+    scripts_dir = get_python_scripts_dir()
+    if isdir(scripts_dir) and isfile(join(scripts_dir, interrogate_name)):
+        return realpath(scripts_dir)
+
+    # 2. Check if interrogate is on PATH (e.g. pipx or system install)
+    which_result = shutil.which("interrogate")
+    if which_result is not None:
+        return realpath(dirname(which_result))
+
+    return None
+
+
+def get_panda_bin_path():
+    """ Returns the path to the panda3d / interrogate binaries.
+    Checks pip-installed panda3d-interrogate first, then falls back to the SDK. """
+    # Try pip-installed interrogate first
+    pip_dir = _find_interrogate_dir()
+    if pip_dir is not None:
+        return pip_dir
+
+    # Fall back to SDK locations
+    if is_windows():
+        return find_in_sdk("bin", "interrogate.exe",
+                           on_error="Failed to find interrogate. "
+                                    "Install it via: pip install panda3d-interrogate")
     elif is_linux() or is_freebsd():
         libpath = get_panda_lib_path()
         search = [
@@ -143,9 +202,13 @@ def get_panda_bin_path():
             "/usr/bin",
             "/usr/local/bin",
         ]
-        return first_existing_path(search, "interrogate")
+        return first_existing_path(search, "interrogate",
+                                   on_error="Failed to find interrogate. "
+                                            "Install it via: pip install panda3d-interrogate")
     elif is_macos():
-        return find_in_sdk("bin", "interrogate", on_error="Failed to find binary path")
+        return find_in_sdk("bin", "interrogate",
+                           on_error="Failed to find interrogate. "
+                                    "Install it via: pip install panda3d-interrogate")
     raise NotImplementedError("Unsupported OS")
 
 

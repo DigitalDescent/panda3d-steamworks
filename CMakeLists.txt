@@ -1,8 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
 
 set(PROJECT_NAME CACHE STRING "Module")
-
-cmake_minimum_required (VERSION 2.6)
-project (${PROJECT_NAME})
+project(${PROJECT_NAME})
 
 # Project configuration
 set(CMAKE_BUILD_TYPE "Release")
@@ -71,11 +70,19 @@ if (WIN32)
     set(MSVC_VERSION_SHORT "vc10")
   elseif (MSVC12)
     set(MSVC_VERSION_SHORT "vc12")
-  elseif(MSVC14)
+  elseif(MSVC_VERSION LESS 1910)
     set(MSVC_VERSION_SHORT "vc14")
+  elseif(MSVC_VERSION LESS 1920)
+    set(MSVC_VERSION_SHORT "vc141")
+  elseif(MSVC_VERSION LESS 1930)
+    set(MSVC_VERSION_SHORT "vc142")
+  elseif(MSVC_VERSION LESS 1950)
+    set(MSVC_VERSION_SHORT "vc143")
+  elseif(MSVC_VERSION LESS 1960)
+    set(MSVC_VERSION_SHORT "vc144")
   else()
-    message(WARMING "Unable to determine visual studio version, assuming Visual Studio 2015")
-    set(MSVC_VERSION_SHORT "vc14")
+    message(WARNING "Unable to determine visual studio version, assuming latest")
+    set(MSVC_VERSION_SHORT "vc144")
   endif()
   message(STATUS "Detected visual studio version: ${MSVC_VERSION_SHORT}")
 
@@ -258,7 +265,7 @@ if (NOT ("${IGATE_VERBOSE}" STREQUAL "0" ))
 endif()
 
 if(NOT ("${return_code}" STREQUAL "0"))
-    message(FATAL_ERROR "Interrogate failed: ${output} ${errors}")
+    message(FATAL_ERROR "Interrogate failed. Make sure panda3d-interrogate is installed:\n  pip install panda3d-interrogate\n\n${output} ${errors}")
 endif()
 
 # Set compiler flags

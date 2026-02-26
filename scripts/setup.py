@@ -75,7 +75,18 @@ def run_cmake(config, args):
 
     # Check for the right interrogate lib
     if PandaSystem.get_major_version() > 1 or PandaSystem.get_minor_version() > 9:
-        cmake_args += ["-DINTERROGATE_LIB:STRING=" + lib_prefix + "p3interrogatedb"]
+        # Prefer p3interrogatedb if available, otherwise fall back
+        interrogatedb_lib = lib_prefix + "p3interrogatedb"
+        if is_windows():
+            interrogatedb_path = join_abs(get_panda_lib_path(), interrogatedb_lib + ".lib")
+        else:
+            interrogatedb_path = join_abs(get_panda_lib_path(), interrogatedb_lib + ".so")
+
+        if isfile(interrogatedb_path):
+            cmake_args += ["-DINTERROGATE_LIB:STRING=" + interrogatedb_lib]
+        else:
+            # In newer Panda3D SDKs, interrogatedb is linked into libpanda
+            cmake_args += ["-DINTERROGATE_LIB:STRING=" + lib_prefix + "panda"]
     else: 
 
         # Buildbot versions do not have the core lib, instead try using libpanda
