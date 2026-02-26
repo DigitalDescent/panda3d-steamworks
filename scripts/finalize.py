@@ -49,7 +49,7 @@ if __name__ == "__main__":
     target_pdb_file = MODULE_NAME + ".pdb"
 
     if source_file:
-        dest_folder = join(get_script_dir(), "../")
+        dest_folder = join(get_script_dir(), "..", MODULE_NAME)
 
         # Copy the generated DLL
         copyfile(source_file, join(dest_folder, target_file))

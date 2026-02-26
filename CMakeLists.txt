@@ -384,11 +384,31 @@ foreach(PDIR ${POSSIBLE_DIRS})
   endif()
 endforeach()
 
+# Steamworks SDK integration
+set(STEAMWORKS_DIR "${CMAKE_CURRENT_LIST_DIR}/thirdparty/steamworks")
 
-if ((EXISTS "${CMAKE_CURRENT_LIST_DIR}/additional_libs.cmake"))
-  include("${CMAKE_CURRENT_LIST_DIR}/additional_libs.cmake")
+# Include the Steamworks headers
+include_directories("${STEAMWORKS_DIR}/public")
+
+if (WIN32)
+  if (IS_64_BIT)
+    link_directories("${STEAMWORKS_DIR}/redistributable_bin/win64")
+    set(LIBRARIES "${LIBRARIES};steam_api64")
+  else()
+    link_directories("${STEAMWORKS_DIR}/redistributable_bin")
+    set(LIBRARIES "${LIBRARIES};steam_api")
+  endif()
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  link_directories("${STEAMWORKS_DIR}/redistributable_bin/osx")
+  set(LIBRARIES "${LIBRARIES};steam_api")
+else()
+  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    link_directories("${STEAMWORKS_DIR}/redistributable_bin/linux64")
+  else()
+    link_directories("${STEAMWORKS_DIR}/redistributable_bin/linux32")
+  endif()
+  set(LIBRARIES "${LIBRARIES};steam_api")
 endif()
-
 
 # Build library
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

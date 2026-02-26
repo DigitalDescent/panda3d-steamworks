@@ -1,0 +1,3 @@
+[submodule "thirdparty/steamworks"]
+	path = thirdparty/steamworks
+	url = https://github.com/rlabrecque/SteamworksSDK

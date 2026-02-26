@@ -1,136 +1,94 @@
-[![Build Status](https://travis-ci.org/tobspr/P3DModuleBuilder.svg?branch=master)](https://travis-ci.org/tobspr/P3DModuleBuilder)
+# panda3d-steamworks
 
-# Panda3D Module Builder
+Python bindings for [Valve's Steamworks SDK](https://partner.steamgames.com/doc/sdk) for the [Panda3D](https://www.panda3d.org/) game engine.
 
-This tool allows you to seamlessly mix your C++ and Python code for the 
-<a href="http://github.com/panda3d/panda3d">Panda3D Game Engine</a>.
+Provides access to Steamworks features — app ownership, DLC management, language queries, and more — directly from your Panda3D Python code.
 
-It makes compiling your C++ code the matter of a single mouse-click.
+## Installation
 
+### From PyPI
 
-## Features
-
- - Automatic Python bindings using `interrogate`
- - Works on Windows, Linux and Mac
-
-## Getting started
-
-
-#### 1. Clone this repository
-
-You can use the download-zip button, or clone this repository. Copy it to a
-suitable path in your project.
-
-#### 2. Write your source code
-
-You can now start to write your C++ code and store it in the `source/` directory.
-Here's a simple example you can start with (save it as `source/example.h` for example):
-
-```cpp
-#ifndef EXAMPLE_H
-#define EXAMPLE_H
-
-#include "pandabase.h"
-
-
-BEGIN_PUBLISH // This exposes all functions in this block to python
-
-inline int multiply(int a, int b) {
-    return a * b;
-}
-
-END_PUBLISH
-
-
-class ExampleClass {
-    PUBLISHED: // Exposes all functions in this scope, use instead of "public:"
-        inline int get_answer() {
-            return 42;
-        };
-};
-
-
-#endif EXAMPLE_H
+```bash
+pip install panda3d-steamworks
 ```
 
-#### 3. Compile the module
+### From source
 
-After you wrote your C++ code, run `python build.py`. It will ask you for
-a module name, for this example we will choose "TestModule".
+```bash
+git clone --recurse-submodules https://github.com/<your-org>/panda3d-steamworks.git
+cd panda3d-steamworks
+pip install .
+```
 
-When the compilation finished, there should now be a `TestModule.pyd` / `TestModule.so` (depending on your platform) generated.
-
-#### 4. Use your module
-
-Using your compiled module is straightforward:
+## Quick start
 
 ```python
-import panda3d.core  # Make sure you import this first before importing your module
+from panda3d_steamworks import SteamApps
 
-import TestModule
+if SteamApps.init():
+    print("Steam initialised!")
+    print("Language:", SteamApps.get_current_game_language())
+    print("Build ID:", SteamApps.get_app_build_id())
+    print("Subscribed:", SteamApps.is_subscribed())
 
-print(TestModule.multiply(3, 4)) # prints 12
+    # DLC
+    print("DLC count:", SteamApps.get_dlc_count())
 
-example = TestModule.ExampleClass()
-print(example.get_answer()) # prints 42
-
+    SteamApps.shutdown()
 ```
 
+> **Note:** A valid `steam_appid.txt` file must be present in the working
+> directory (or your game must be launched through Steam) for `SteamApps.init()`
+> to succeed.
 
+## API
 
-#### 
+The module currently wraps the Steamworks `ISteamApps` interface via the `SteamApps` class. Methods follow the Steamworks naming convention converted to `snake_case`. See the [Steamworks ISteamApps documentation](https://partner.steamgames.com/doc/api/ISteamApps) for full details.
 
 ## Requirements
 
-- The Panda3D SDK (get it <a href="http://www.panda3d.org/download.php?sdk">here</a>)
-- CMake 2.6 or higher (get it <a href="https://cmake.org/download/">here</a>)
-- windows only: The thirdparty folder installed in the Panda3D sdk folder (See <a href="https://www.panda3d.org/forums/viewtopic.php?f=9&t=18775">here</a>)
+- [Panda3D SDK](https://www.panda3d.org/download/) (with headers — the pip `panda3d` package alone is **not** sufficient for building from source)
+- [CMake](https://cmake.org/download/) 3.16 or higher
+- A C++ compiler compatible with your Panda3D build (Visual Studio on Windows, GCC/Clang on Linux/macOS)
+- [`panda3d-interrogate`](https://pypi.org/project/panda3d-interrogate/) for generating Python bindings
 
+Pre-built wheels include the compiled extension and the Steamworks shared library, so end users only need `pip install panda3d-steamworks`.
 
-**For compiling on Windows 32 bit:**
+## Building from source
 
-- Visual Studio 2010/2015
+```bash
+# Clone with the Steamworks SDK submodule
+git clone --recurse-submodules https://github.com/DigitalDescent/panda3d-steamworks.git
+cd panda3d-steamworks
 
-**For compiling on Windows 64 bit:**
+# Install in development mode
+pip install -e .
 
-- Visual Studio 2010/2015
-- Windows SDK 7.1 (be sure to tick the VC++ 64 bit compilers option)
-
-
-## Advanced configuration
-
-**Please clean up your built directories after changing the configuration! You can
-do so with passing `--clean` in the command line.**
-
-
-### Command Line
-Command line options are:
-
-- `--optimize=N` to override the optimize option. This overrides the option set in the `config.ini`
-- `--clean` to force a clean rebuild
-
-### config.ini
-Further adjustments can be made in the `config.ini` file:
-
-- You can set `generate_pdb` to `0` or `1` to control whether a `.pdb` file is generated.
-- You can set `optimize` to change the optimization. This has to match the `--optimize=` option of your Panda3D Build.
-- You can set `require_lib_eigen` to `1` to require the Eigen 3 library
-- You can set `require_lib_bullet` to `1` to require the Bullet library
-- You can set `require_lib_freetype` to `1` to require the Freetype library
-- You can set `verbose_igate` to `1` or `2` to get detailed interrogate output (1 = verbose, 2 = very verbose)
-
-### Additional libaries
-
-If you want to include additional (external) libraries, you can create a
-cmake file named `additional_libs.cmake` in the folder of the module builder,
-which will then get included during the build.
-
-If you would like to include the protobuf library for example, your cmake file could look like this:
-
-```cmake
-find_package(Protobuf REQUIRED)
-include_directories(${PROTOBUF_INCLUDE_DIRS})
-set(LIBRARIES "${LIBRARIES};${PROTOBUF_LIBRARIES}")
-
+# Or build a wheel for distribution
+pip install build
+python -m build --wheel
 ```
+
+### Build configuration
+
+Build options are constants at the top of `setup.py`:
+
+| Constant | Default | Description |
+|----------|---------|-------------|
+| `GENERATE_PDB` | `True` | Generate a `.pdb` debug symbol file (Windows). |
+| `OPTIMIZE` | `3` | Optimisation level (must match your Panda3D build). |
+| `VERBOSE_IGATE` | `0` | Interrogate verbosity (`0` = quiet, `1` = verbose, `2` = very verbose). |
+| `REQUIRE_LIB_BULLET` | `False` | Require the Bullet physics library. |
+| `REQUIRE_LIB_FREETYPE` | `False` | Require the Freetype library. |
+
+You can also pass options via `setup.py`:
+
+- `python setup.py build_ext --optimize=N`
+- `python setup.py build_ext --clean-build` — force a clean rebuild
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+
+The Steamworks SDK is Copyright © Valve Corporation and is subject to the [Steamworks SDK license](https://partner.steamgames.com/doc/sdk/license).
 

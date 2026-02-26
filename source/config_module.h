@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2026 Digital Descent LLC. All rights reserved.
+ */
+
 #pragma once
 
 #include "pandabase.h"

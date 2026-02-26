@@ -1,12 +1,12 @@
+/**
+ * Copyright (c) 2026 Digital Descent LLC. All rights reserved.
+ */
 
 #include "config_module.h"
 
-/*
-
-Include all your dynamically typed classes here, e.g.
-#include "my_dynamic_class.h"
-
-*/
+#include "steamApps.h"
+#include "steamAppTicket.h"
+#include "steamController.h"
 
 #include "dconfig.h"
 
@@ -24,9 +24,6 @@ init_libmymodule() {
     return;
   }
   initialized = true;
-
-  // Init your dynamic types here, e.g.:
-  // MyDynamicClass::init_type();
 
   return;
 }

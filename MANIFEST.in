@@ -1,0 +1,21 @@
+# Include all C++ source / headers needed for the build
+recursive-include source *.cpp *.cxx *.cc *.c *.h *.hpp *.I *.in
+
+# CMake build system
+include CMakeLists.txt
+include additional_libs.cmake
+include setup.py
+
+# Build scripts
+recursive-include scripts *.py
+
+# Steamworks SDK headers and redistributable libraries
+recursive-include thirdparty/steamworks/public *.h
+recursive-include thirdparty/steamworks/redistributable_bin *.dll *.lib *.so *.dylib
+
+# Package files
+include panda3d_steamworks/__init__.py
+
+# Docs
+include README.md
+include LICENSE
