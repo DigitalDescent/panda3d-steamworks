@@ -90,5 +90,5 @@ You can also pass options via `setup.py`:
 
 This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
 
-The Steamworks SDK is Copyright © Valve Corporation and is subject to the [Steamworks SDK license](https://partner.steamgames.com/doc/sdk/license).
+The Steamworks SDK is Copyright © Valve Corporation and is subject to the the rules outlined at [Distributing Open source](https://partner.steamgames.com/doc/sdk/uploading/distributing_opensource).
 
