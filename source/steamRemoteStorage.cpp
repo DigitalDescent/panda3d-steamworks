@@ -430,4 +430,32 @@ bool SteamRemoteStorage::end_file_write_batch() {
   return iface->EndFileWriteBatch();
 }
 
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::file_write
+//       Access: Published, Static
+//  Description: Write a string to a file in Steam Cloud.
+////////////////////////////////////////////////////////////////////
+bool SteamRemoteStorage::file_write(const std::string &file, const std::string &data) {
+  ISteamRemoteStorage *iface = SteamAPI_SteamRemoteStorage();
+  if (!iface) return false;
+  return iface->FileWrite(file.c_str(), data.c_str(), (int32)data.size());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::file_read
+//       Access: Published, Static
+//  Description: Read the contents of a Steam Cloud file as a string.
+////////////////////////////////////////////////////////////////////
+std::string SteamRemoteStorage::file_read(const std::string &file) {
+  ISteamRemoteStorage *iface = SteamAPI_SteamRemoteStorage();
+  if (!iface) return std::string();
+  int32 size = iface->GetFileSize(file.c_str());
+  if (size <= 0) return std::string();
+  std::string buf(size, '\0');
+  int32 read = iface->FileRead(file.c_str(), &buf[0], size);
+  if (read <= 0) return std::string();
+  buf.resize(read);
+  return buf;
+}
+
 #endif  // CPPPARSER

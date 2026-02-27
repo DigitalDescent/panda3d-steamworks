@@ -397,6 +397,13 @@ def generate_header(iface_name, iface_data, iface_cfg, methods_info):
                 param_str = "PyObject *callback"
         lines.append("  static {} {}({});".format(ret_cpp, snake, param_str))
 
+    # Extra (hand-written) method declarations
+    for em in iface_cfg.get("extra_methods", []):
+        lines.append("")
+        if em.get("comment"):
+            lines.append("  // {}".format(em["comment"]))
+        lines.append("  static {};".format(em["declaration"]))
+
     lines.append("")
     lines.append("private:")
     lines.append("  {}() = delete;".format(class_name))
@@ -531,6 +538,15 @@ def generate_source(iface_name, iface_data, iface_cfg, methods_info,
         else:
             _gen_simple_method(lines, class_name, iface_name, helper_name,
                                method, snake, wrapper_params, ret_info)
+
+    # Extra (hand-written) method implementations
+    for em in iface_cfg.get("extra_methods", []):
+        lines.append(_method_comment(class_name,
+                                     em.get("name", "extra_method"),
+                                     em.get("comment", "")))
+        for impl_line in em["implementation"]:
+            lines.append(impl_line)
+        lines.append("")
 
     lines.append("#endif  // CPPPARSER")
     lines.append("")
@@ -859,6 +875,7 @@ def run_codegen(root_dir=None, check_only=False):
             "skip_methods": overrides.get("skip_methods", []),
             "buffer_sizes": overrides.get("buffer_sizes", {}),
             "extra_includes": overrides.get("extra_includes", []),
+            "extra_methods": overrides.get("extra_methods", []),
         }
 
         class_name = iface_cfg["class_name"]

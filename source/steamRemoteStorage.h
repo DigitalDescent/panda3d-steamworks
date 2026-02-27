@@ -77,6 +77,12 @@ PUBLISHED:
   static bool begin_file_write_batch();
   static bool end_file_write_batch();
 
+  // Write a string to a file in Steam Cloud.
+  static bool file_write(const std::string &file, const std::string &data);
+
+  // Read the contents of a Steam Cloud file as a string.
+  static std::string file_read(const std::string &file);
+
 private:
   SteamRemoteStorage() = delete;
 };

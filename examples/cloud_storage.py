@@ -1,10 +1,20 @@
-"""Check Steam Cloud status and list files stored in cloud storage."""
+"""Read and write JSON data to Steam Cloud storage.
 
+Demonstrates:
+  - Writing a Python dict as JSON to a Steam Cloud file
+  - Reading it back and deserialising to a dict
+  - Listing cloud files and checking status
+"""
+
+import json
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d_steamworks import SteamApps, SteamRemoteStorage
+
+CLOUD_FILE = "settings.json"
 
 
 def main():
@@ -13,50 +23,57 @@ def main():
         return
 
     # ------------------------------------------------------------------
-    # Cloud account / app status
+    # Cloud status
     # ------------------------------------------------------------------
-    account_enabled = SteamRemoteStorage.is_cloud_enabled_for_account()
-    app_enabled = SteamRemoteStorage.is_cloud_enabled_for_app()
-
     print("Steam Cloud Status")
-    print(f"  Account cloud enabled : {account_enabled}")
-    print(f"  App cloud enabled     : {app_enabled}")
+    print(f"  Account cloud enabled : {SteamRemoteStorage.is_cloud_enabled_for_account()}")
+    print(f"  App cloud enabled     : {SteamRemoteStorage.is_cloud_enabled_for_app()}")
 
     # ------------------------------------------------------------------
-    # List files in cloud storage
+    # Write JSON to cloud
     # ------------------------------------------------------------------
-    file_count = SteamRemoteStorage.get_file_count()
-    print(f"\nCloud files: {file_count}")
+    save_data = {
+        "player_name": "Gordon",
+        "level": 42,
+        "inventory": ["crowbar", "gravity_gun", "medkit"],
+        "settings": {
+            "volume": 0.8,
+            "fullscreen": True,
+        },
+    }
 
-    if file_count == 0:
-        print("  (no files in cloud storage)")
+    payload = json.dumps(save_data, indent=2)
+    ok = SteamRemoteStorage.file_write(CLOUD_FILE, payload)
+    print(f"\nWrote '{CLOUD_FILE}': {'ok' if ok else 'FAILED'}")
+
+    # ------------------------------------------------------------------
+    # Read JSON back from cloud
+    # ------------------------------------------------------------------
+    if SteamRemoteStorage.file_exists(CLOUD_FILE):
+        raw = SteamRemoteStorage.file_read(CLOUD_FILE)
+        loaded = json.loads(raw)
+
+        print(f"Read '{CLOUD_FILE}' ({len(raw)} bytes):")
+        for key, value in loaded.items():
+            print(f"  {key}: {value}")
     else:
-        for i in range(file_count):
-            # get_file_name_and_size is usually available; here we can
-            # demonstrate checking individual files by name if you know them.
-            pass
+        print(f"'{CLOUD_FILE}' not found in cloud storage.")
 
     # ------------------------------------------------------------------
-    # Check a specific file
+    # List all cloud files
     # ------------------------------------------------------------------
-    test_file = "save_game.dat"
-    exists = SteamRemoteStorage.file_exists(test_file)
-    print(f"\nChecking '{test_file}':")
-    print(f"  Exists    : {exists}")
-
-    if exists:
-        size = SteamRemoteStorage.get_file_size(test_file)
-        ts = SteamRemoteStorage.get_file_timestamp(test_file)
-        persisted = SteamRemoteStorage.file_persisted(test_file)
-        print(f"  Size      : {size} bytes")
-        print(f"  Timestamp : {ts}")
-        print(f"  Persisted : {persisted}")
+    count = SteamRemoteStorage.get_file_count()
+    print(f"\nCloud files ({count}):")
+    if count == 0:
+        print("  (none)")
+    else:
+        for i in range(count):
+            pass  # get_file_name_and_size not yet wrapped
 
     # ------------------------------------------------------------------
-    # Enable / disable cloud sync for this app
+    # Delete the test file (optional – uncomment to clean up)
     # ------------------------------------------------------------------
-    # Uncomment to toggle cloud for this app:
-    # SteamRemoteStorage.set_cloud_enabled_for_app(True)
+    # SteamRemoteStorage.file_delete(CLOUD_FILE)
 
     SteamApps.shutdown()
 
