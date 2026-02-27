@@ -4,10 +4,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from panda3d_steamworks import SteamApps, SteamFriends
-
-# EFriendFlags from steam_api_common.h
-K_E_FRIEND_FLAG_IMMEDIATE = 0x04  # regular friends
+from panda3d import core
+from panda3d_steamworks import SteamApps, SteamFriends, SteamFriendFlags
 
 
 def main():
@@ -18,13 +16,13 @@ def main():
     persona = SteamFriends.get_persona_name()
     print(f"Logged in as: {persona}\n")
 
-    friend_count = SteamFriends.get_friend_count(K_E_FRIEND_FLAG_IMMEDIATE)
+    friend_count = SteamFriends.get_friend_count(SteamFriendFlags.k_EFriendFlagImmediate)
     print(f"You have {friend_count} friend(s):\n")
 
     # Print the first 25 friends (to avoid flooding the console)
     limit = min(friend_count, 25)
     for i in range(limit):
-        friend_id = SteamFriends.get_friend_by_index(i, K_E_FRIEND_FLAG_IMMEDIATE)
+        friend_id = SteamFriends.get_friend_by_index(i, SteamFriendFlags.k_EFriendFlagImmediate)
         # Note: GetFriendPersonaName requires the friend's data to be cached.
         # For friends on your list this is usually available immediately.
         print(f"  [{i+1:3d}] Steam ID: {friend_id}")

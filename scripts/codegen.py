@@ -717,6 +717,82 @@ def _gen_async_method(lines, cls, iface, helper, method, snake, params):
 
 
 # ========================================================================
+# Enum wrapper class generation
+# ========================================================================
+
+def _enum_class_name(enum_name):
+    """Derive a wrapper class name from a Steam enum name.
+
+    EFriendFlags -> SteamFriendFlags
+    ESteamIPType -> SteamIPType
+    AudioPlayback_Status -> SteamAudioPlaybackStatus
+    """
+    name = enum_name
+    # Strip leading 'E' that Steamworks uses on most enums
+    if name.startswith("E") and len(name) > 1 and name[1].isupper():
+        name = name[1:]
+    # Remove underscores (e.g. AudioPlayback_Status -> AudioPlaybackStatus)
+    name = name.replace("_", "")
+    prefix = getattr(cfg, "ENUM_CLASS_PREFIX", "Steam")
+    # Avoid doubling the prefix (e.g. ESteamIPType -> SteamIPType, not SteamSteamIPType)
+    if name.startswith(prefix):
+        return name
+    return "{}{}".format(prefix, name)
+
+
+def generate_enums_header(api_data):
+    """Generate steamEnums.h containing one PUBLISHED class per Steam enum."""
+    skip = getattr(cfg, "SKIP_ENUMS", set())
+    lines = []
+    lines.append(_GENERATED_BANNER)
+    lines.append("")
+    lines.append("#pragma once")
+    lines.append("")
+    lines.append('#include "pandabase.h"')
+    lines.append("")
+
+    for enum_data in api_data.get("enums", []):
+        enum_name = enum_data["enumname"]
+        if enum_name in skip:
+            continue
+
+        cls = _enum_class_name(enum_name)
+        values = enum_data.get("values", [])
+        if not values:
+            continue
+
+        lines.append("/" * 68)
+        lines.append("//       Class : {}".format(cls))
+        lines.append("// Description : Wrapper for {} enum constants.".format(enum_name))
+        lines.append("/" * 68)
+        lines.append("class EXPORT_CLASS {} {{".format(cls))
+        lines.append("PUBLISHED:")
+
+        for val in values:
+            vname = val["name"]
+            vvalue = val["value"]
+            lines.append("  static const int {} = {};".format(vname, vvalue))
+
+        lines.append("")
+        lines.append("private:")
+        lines.append("  {}() = delete;".format(cls))
+        lines.append("};")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def generate_enums_source():
+    """Generate steamEnums.cpp — just includes the header."""
+    lines = []
+    lines.append(_GENERATED_BANNER)
+    lines.append("")
+    lines.append('#include "steamEnums.h"')
+    lines.append("")
+    return "\n".join(lines)
+
+
+# ========================================================================
 # config_module.cpp generation
 # ========================================================================
 
@@ -832,6 +908,29 @@ def run_codegen(root_dir=None, check_only=False):
         for path, content in [(py_compat_path, py_compat_content),
                               (cb_header_path, cb_header_content),
                               (cb_source_path, cb_source_content)]:
+            if check_only:
+                if not os.path.isfile(path):
+                    stale_files.append(path)
+                else:
+                    with open(path, "r") as f:
+                        if f.read() != content:
+                            stale_files.append(path)
+            else:
+                _write_if_changed(path, content)
+                generated_files.append(path)
+
+    # ------------------------------------------------------------------
+    # Generate enum wrapper classes (steamEnums.h / .cpp)
+    # ------------------------------------------------------------------
+    if getattr(cfg, "ENABLE_ENUMS", False):
+        enum_header_content = generate_enums_header(api_data)
+        enum_source_content = generate_enums_source()
+        enum_header_path = os.path.join(output_dir, "steamEnums.h")
+        enum_source_path = os.path.join(output_dir, "steamEnums.cpp")
+        generated_headers.append("steamEnums.h")
+
+        for path, content in [(enum_header_path, enum_header_content),
+                              (enum_source_path, enum_source_content)]:
             if check_only:
                 if not os.path.isfile(path):
                     stale_files.append(path)

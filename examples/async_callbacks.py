@@ -17,7 +17,10 @@ from panda3d import core
 from panda3d_steamworks import (
     SteamApps,
     SteamCallbackManager,
+    SteamChatRoomEnterResponse,
+    SteamLobbyType,
     SteamMatchmaking,
+    SteamResult,
     SteamUserStats,
 )
 
@@ -70,9 +73,8 @@ class AsyncDemo(ShowBase):
             print("  Failed to request player count.")
 
         print("\n--- Creating a lobby ---")
-        # ELobbyType: 0=Private, 1=FriendsOnly, 2=Public, 3=Invisible
         handle = SteamMatchmaking.create_lobby(
-            2, 4, self._on_lobby_created)  # Public, 4 slots
+            SteamLobbyType.k_ELobbyTypePublic, 4, self._on_lobby_created)
         if handle:
             print(f"  create_lobby() call handle: {handle}")
         else:
@@ -98,7 +100,7 @@ class AsyncDemo(ShowBase):
             return
         eresult = result["result"]
         lobby_id = result["steam_id_lobby"]
-        if eresult == 1:  # k_EResultOK
+        if eresult == SteamResult.k_EResultOK:
             print(f"[CALLBACK] Lobby created!  ID = {lobby_id}")
         else:
             print(f"[CALLBACK] Lobby creation failed, EResult = {eresult}")
@@ -118,7 +120,7 @@ class AsyncDemo(ShowBase):
             return
         lobby_id = result["steam_id_lobby"]
         status = result["chat_room_enter_response"]
-        if status == 1:  # k_EChatRoomEnterResponseSuccess
+        if status == SteamChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess:
             print(f"[CALLBACK] Entered lobby {lobby_id}")
         else:
             print(f"[CALLBACK] Failed to enter lobby, response = {status}")

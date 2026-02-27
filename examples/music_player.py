@@ -9,21 +9,16 @@ import time
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from panda3d_steamworks import SteamApps, SteamMusic
-
-# Playback status constants (from EAudioPlayback_Status)
-AUDIO_UNDEFINED = 0
-AUDIO_PLAYING = 1
-AUDIO_PAUSED = 2
-AUDIO_IDLE = 3
+from panda3d import core
+from panda3d_steamworks import SteamApps, SteamAudioPlaybackStatus, SteamMusic
 
 
 def status_label(status):
     return {
-        AUDIO_UNDEFINED: "Undefined",
-        AUDIO_PLAYING: "Playing",
-        AUDIO_PAUSED: "Paused",
-        AUDIO_IDLE: "Idle",
+        SteamAudioPlaybackStatus.AudioPlayback_Undefined: "Undefined",
+        SteamAudioPlaybackStatus.AudioPlayback_Playing: "Playing",
+        SteamAudioPlaybackStatus.AudioPlayback_Paused: "Paused",
+        SteamAudioPlaybackStatus.AudioPlayback_Idle: "Idle",
     }.get(status, f"Unknown ({status})")
 
 

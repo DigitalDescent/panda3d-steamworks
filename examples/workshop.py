@@ -12,7 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from panda3d_steamworks import SteamApps, SteamUGC, SteamCallbackManager
+from panda3d import core
+from panda3d_steamworks import SteamApps, SteamItemState, SteamUGC, SteamCallbackManager
 
 # Replace with a valid Workshop item ID for your app.
 WORKSHOP_ITEM_ID = 0
@@ -43,22 +44,22 @@ def main():
     if WORKSHOP_ITEM_ID:
         state = SteamUGC.get_item_state(WORKSHOP_ITEM_ID)
         state_flags = []
-        if state & 0x01:
+        if state & SteamItemState.k_EItemStateSubscribed:
             state_flags.append("Subscribed")
-        if state & 0x02:
+        if state & SteamItemState.k_EItemStateLegacyItem:
             state_flags.append("LegacyItem")
-        if state & 0x04:
+        if state & SteamItemState.k_EItemStateInstalled:
             state_flags.append("Installed")
-        if state & 0x08:
+        if state & SteamItemState.k_EItemStateNeedsUpdate:
             state_flags.append("NeedsUpdate")
-        if state & 0x10:
+        if state & SteamItemState.k_EItemStateDownloading:
             state_flags.append("Downloading")
-        if state & 0x20:
+        if state & SteamItemState.k_EItemStateDownloadPending:
             state_flags.append("DownloadPending")
         print(f"Item {WORKSHOP_ITEM_ID} state: {', '.join(state_flags) or 'None'}")
 
         # Start a download if the item needs updating
-        if state & 0x08:
+        if state & SteamItemState.k_EItemStateNeedsUpdate:
             ok = SteamUGC.download_item(WORKSHOP_ITEM_ID, True)
             print(f"Download started: {ok}")
 
