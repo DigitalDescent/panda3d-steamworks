@@ -1,0 +1,11 @@
+# Interrogate Bindings
+interrogate*.cpp
+interrogate.in
+
+# Generated source files
+*.cpp
+*.h
+
+# Allow the config files as these are not generated.
+!config_*.cpp
+!config_*.h

@@ -2,11 +2,9 @@
 # CI / CD – Build Panda3D from source (cached), compile steamworks wheels,
 # and publish to PyPI on tagged releases.
 #
-# Inspired by the panda3d-cmu CI workflow.  Each (os × python-version) job
+# Inspired by the panda3d CI workflow.  Each (os × python-version) job
 # builds a minimal Panda3D SDK from source, caches it, then compiles the
 # panda3d-steamworks wheel against that SDK.
-#
-# Adjust PANDA3D_REF and the python-version list in the matrix to taste.
 # ──────────────────────────────────────────────────────────────────────────────
 name: Build and Publish
 
@@ -210,6 +208,69 @@ jobs:
         name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
         path: dist/*.whl
         if-no-files-found: error
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Verify generated code & docs are up to date (lightweight, no build needed)
+  # ────────────────────────────────────────────────────────────────────────────
+  codegen-check:
+    name: "Codegen freshness check"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Check generated docs are up to date
+      run: python scripts/codegen_docs.py --check
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Deploy documentation to GitHub Pages (main/master pushes only)
+  # ────────────────────────────────────────────────────────────────────────────
+  docs:
+    name: Deploy docs to GitHub Pages
+    needs: codegen-check
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    permissions:
+      pages: write
+      id-token: write
+
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v5
+
+    - name: Build with Jekyll
+      uses: actions/jekyll-build-pages@v1
+      with:
+        source: ./docs
+        destination: ./_site
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./_site
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
 
   # ────────────────────────────────────────────────────────────────────────────
   # Publish to PyPI (tagged releases only)
