@@ -37,6 +37,16 @@ bool SteamRemotePlay::show_remote_play_together_ui() {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamRemotePlay::send_remote_play_together_invite
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamRemotePlay::send_remote_play_together_invite(unsigned long long steam_id_friend) {
+  ISteamRemotePlay *iface = _get_steam_remote_play();
+  if (!iface) return false;
+  return iface->BSendRemotePlayTogetherInvite(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamRemotePlay::enable_remote_play_together_direct_input
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////

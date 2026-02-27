@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include "steamPython.h"
 
 ////////////////////////////////////////////////////////////////////
 //       Class : SteamParties
@@ -14,6 +15,15 @@
 class EXPORT_CLASS SteamParties {
 PUBLISHED:
   static unsigned int get_num_active_beacons();
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long join_party(unsigned long long beacon_id, PyObject *callback);
+  static void on_reservation_completed(unsigned long long beacon, unsigned long long steam_id_user);
+  static void cancel_reservation(unsigned long long beacon, unsigned long long steam_id_user);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long change_num_open_slots(unsigned long long beacon, unsigned int open_slots, PyObject *callback);
+  static bool destroy_beacon(unsigned long long beacon);
 
 private:
   SteamParties() = delete;

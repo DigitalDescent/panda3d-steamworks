@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include "steamPython.h"
 #include <string>
 
 ////////////////////////////////////////////////////////////////////
@@ -16,7 +17,36 @@ class EXPORT_CLASS SteamHTMLSurface {
 PUBLISHED:
   static bool init();
   static bool shutdown();
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long create_browser(const std::string & user_agent, const std::string & user_css, PyObject *callback);
+  static void remove_browser(unsigned int browser_handle);
+  static void load_url(unsigned int browser_handle, const std::string & url, const std::string & post_data);
+  static void set_size(unsigned int browser_handle, unsigned int width, unsigned int height);
+  static void stop_load(unsigned int browser_handle);
+  static void reload(unsigned int browser_handle);
+  static void go_back(unsigned int browser_handle);
+  static void go_forward(unsigned int browser_handle);
+  static void add_header(unsigned int browser_handle, const std::string & key, const std::string & value);
+  static void execute_javascript(unsigned int browser_handle, const std::string & script);
+  static void mouse_move(unsigned int browser_handle, int x, int y);
+  static void mouse_wheel(unsigned int browser_handle, int delta);
+  static void set_horizontal_scroll(unsigned int browser_handle, unsigned int absolute_pixel_scroll);
+  static void set_vertical_scroll(unsigned int browser_handle, unsigned int absolute_pixel_scroll);
+  static void set_key_focus(unsigned int browser_handle, bool has_key_focus);
+  static void view_source(unsigned int browser_handle);
+  static void copy_to_clipboard(unsigned int browser_handle);
+  static void paste_from_clipboard(unsigned int browser_handle);
+  static void find(unsigned int browser_handle, const std::string & search_str, bool currently_in_find, bool reverse);
+  static void stop_find(unsigned int browser_handle);
+  static void get_link_at_position(unsigned int browser_handle, int x, int y);
   static void set_cookie(const std::string & hostname, const std::string & key, const std::string & value, const std::string & path, unsigned int expires, bool secure, bool http_only);
+  static void set_page_scale_factor(unsigned int browser_handle, float zoom, int point_x, int point_y);
+  static void set_background_mode(unsigned int browser_handle, bool background_mode);
+  static void set_dpi_scaling_factor(unsigned int browser_handle, float dpi_scaling);
+  static void open_developer_tools(unsigned int browser_handle);
+  static void allow_start_request(unsigned int browser_handle, bool allowed);
+  static void js_dialog_response(unsigned int browser_handle, bool result);
 
 private:
   SteamHTMLSurface() = delete;

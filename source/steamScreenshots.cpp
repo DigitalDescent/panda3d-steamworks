@@ -35,6 +35,36 @@ void SteamScreenshots::hook_screenshots(bool hook) {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamScreenshots::set_location
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamScreenshots::set_location(unsigned int h_screenshot, const std::string & location) {
+  ISteamScreenshots *iface = _get_steam_screenshots();
+  if (!iface) return false;
+  return iface->SetLocation(h_screenshot, location.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamScreenshots::tag_user
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamScreenshots::tag_user(unsigned int h_screenshot, unsigned long long steam_id) {
+  ISteamScreenshots *iface = _get_steam_screenshots();
+  if (!iface) return false;
+  return iface->TagUser(h_screenshot, CSteamID(steam_id));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamScreenshots::tag_published_file
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamScreenshots::tag_published_file(unsigned int h_screenshot, unsigned long long published_file_id) {
+  ISteamScreenshots *iface = _get_steam_screenshots();
+  if (!iface) return false;
+  return iface->TagPublishedFile(h_screenshot, published_file_id);
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamScreenshots::is_screenshots_hooked
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////

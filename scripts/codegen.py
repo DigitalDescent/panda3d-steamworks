@@ -28,6 +28,7 @@ if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 
 import codegen_config as cfg  # noqa: E402
+import codegen_callbacks as cbgen  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Auto-generated file banner
@@ -194,18 +195,39 @@ def resolve_param_type(steam_type, typedefs, enums):
 SIMPLE = "simple"           # No special handling needed
 STRING_BUFFER = "buffer"    # Has char*/size output pairs -> return std::string
 SKIP = "skip"               # Cannot auto-generate
+ASYNC = "async"             # SteamAPICall_t return -> CCallResult-based async wrapper
 
 
 def classify_method(method, typedefs, enums):
-    """Classify a method as SIMPLE, STRING_BUFFER, or SKIP.
+    """Classify a method as SIMPLE, STRING_BUFFER, ASYNC, or SKIP.
 
     Returns (kind, buffer_pairs) where buffer_pairs is a list of
     (char_param_index, size_param_index) tuples for STRING_BUFFER methods.
+    For ASYNC methods, buffer_pairs is always empty.
     """
     ret_type = method["returntype"].strip()
     params = method.get("params", [])
 
-    # Skip async methods
+    # --- Async methods (SteamAPICall_t) ---
+    if ret_type == "SteamAPICall_t":
+        if not getattr(cfg, 'ENABLE_ASYNC_METHODS', False):
+            return SKIP, []
+        callresult = method.get("callresult", "")
+        if not callresult:
+            return SKIP, []
+        skip_cb = getattr(cfg, 'SKIP_CALLBACK_STRUCTS', set())
+        if callresult in skip_cb:
+            return SKIP, []
+        # Verify all params are resolvable and no output pointers
+        for p in params:
+            pt = p["paramtype"].strip()
+            if pt.endswith("*") and not pt.startswith("const "):
+                return SKIP, []
+            if resolve_param_type(pt, typedefs, enums) is None:
+                return SKIP, []
+        return ASYNC, []
+
+    # --- Sync methods ---
     if resolve_return_type(ret_type, typedefs, enums) is None:
         return SKIP, []
 
@@ -266,6 +288,11 @@ def _needs_string_include(methods_info):
     return False
 
 
+def _has_async_methods(methods_info):
+    """Check if any method is ASYNC (needs PyObject / steamPython.h)."""
+    return any(kind == ASYNC for _, kind, _, _, _ in methods_info)
+
+
 def _make_wrapper_params(method, buffer_pairs, typedefs, enums):
     """Build the list of (param_name, cpp_type, call_transform) for wrapper.
 
@@ -295,6 +322,8 @@ def _format_call_arg(pname, transform):
     """Format a single argument for calling into the Steam API."""
     if transform == "c_str":
         return "{}.c_str()".format(pname)
+    if transform == "steamid_from":
+        return "CSteamID({})".format(pname)
     if transform and transform.startswith("enum_cast:"):
         enum_type = transform[len("enum_cast:"):]
         return "static_cast<{}>({})".format(enum_type, pname)
@@ -310,6 +339,7 @@ def generate_header(iface_name, iface_data, iface_cfg, methods_info):
     class_name = iface_cfg["class_name"]
     description = iface_cfg.get("description", "Wrapper around {}.".format(iface_name))
     needs_string = _needs_string_include(methods_info)
+    has_async = _has_async_methods(methods_info)
 
     lines = []
     lines.append(_GENERATED_BANNER)
@@ -317,6 +347,8 @@ def generate_header(iface_name, iface_data, iface_cfg, methods_info):
     lines.append("#pragma once")
     lines.append("")
     lines.append('#include "pandabase.h"')
+    if has_async:
+        lines.append('#include "steamPython.h"')
     if needs_string:
         lines.append("#include <string>")
     lines.append("")
@@ -344,7 +376,12 @@ def generate_header(iface_name, iface_data, iface_cfg, methods_info):
     for method, kind, bpairs, ret_info, wrapper_params in methods_info:
         snake = steam_method_to_snake(method["methodname"], method["returntype"])
 
-        if kind == STRING_BUFFER:
+        if kind == ASYNC:
+            ret_cpp = "unsigned long long"
+            callresult = method.get("callresult", "")
+            lines.append("  // Async: callback receives dict with result fields.")
+            lines.append("  // Returns call handle (0 on failure).")
+        elif kind == STRING_BUFFER:
             ret_cpp = "std::string"
         else:
             ret_cpp = ret_info[0]
@@ -352,6 +389,12 @@ def generate_header(iface_name, iface_data, iface_cfg, methods_info):
         param_str = ", ".join(
             _format_header_param(pn, pt) for pn, pt, _ in wrapper_params
         )
+        # Async methods get an extra PyObject *callback parameter
+        if kind == ASYNC:
+            if param_str:
+                param_str += ", PyObject *callback"
+            else:
+                param_str = "PyObject *callback"
         lines.append("  static {} {}({});".format(ret_cpp, snake, param_str))
 
     lines.append("")
@@ -445,13 +488,32 @@ def generate_source(iface_name, iface_data, iface_cfg, methods_info,
         lines.append("}")
         lines.append("")
 
+    # Collect callresult types needed by async methods (for forward decls)
+    needed_callresults = set()
+    for method, kind, bpairs, ret_info, wrapper_params in methods_info:
+        if kind == ASYNC:
+            needed_callresults.add(method.get("callresult", ""))
+    needed_callresults.discard("")
+
+    # Forward declarations for async call-result registration functions
+    if needed_callresults:
+        lines.append("// Forward declarations for async call-result registration")
+        for cr in sorted(needed_callresults):
+            lines.append(
+                "extern void _steam_async_call_{}"
+                "(SteamAPICall_t, PyObject *);".format(cr))
+        lines.append("")
+
     # Generated method bodies
     for method, kind, bpairs, ret_info, wrapper_params in methods_info:
         snake = steam_method_to_snake(method["methodname"], method["returntype"])
         steam_name = method["methodname"]
         ret_type_steam = method["returntype"].strip()
 
-        if kind == STRING_BUFFER:
+        if kind == ASYNC:
+            _gen_async_method(lines, class_name, iface_name, helper_name,
+                              method, snake, wrapper_params)
+        elif kind == STRING_BUFFER:
             _gen_buffer_method(lines, class_name, iface_name, helper_name,
                                method, snake, bpairs, wrapper_params,
                                ret_type_steam, iface_cfg)
@@ -602,6 +664,43 @@ def _gen_buffer_method(lines, cls, iface, helper, method, snake, bpairs,
 
 
 # ========================================================================
+# Async method body generation
+# ========================================================================
+
+def _gen_async_method(lines, cls, iface, helper, method, snake, params):
+    """SteamAPICall_t return -> async wrapper with Python callable callback."""
+    steam_name = method["methodname"]
+    callresult = method.get("callresult", "")
+
+    param_decl = ", ".join(_format_header_param(pn, pt) for pn, pt, _ in params)
+    if param_decl:
+        param_decl += ", PyObject *callback"
+    else:
+        param_decl = "PyObject *callback"
+    call_args = ", ".join(_format_call_arg(pn, tr) for pn, _, tr in params)
+
+    lines.append(_method_comment(
+        cls, snake,
+        "Async. Invokes callback(dict) on completion."))
+    lines.append(
+        "unsigned long long {}::{}({}) {{".format(cls, snake, param_decl))
+    lines.append("  {} *iface = {}();".format(iface, helper))
+    lines.append("  if (!iface) return 0;")
+    lines.append(
+        "  SteamAPICall_t call = iface->{}({});".format(
+            steam_name, call_args))
+    lines.append("  if (call == k_uAPICallInvalid) return 0;")
+    lines.append("  if (callback && callback != Py_None"
+                 " && PyCallable_Check(callback)) {")
+    lines.append(
+        "    _steam_async_call_{}(call, callback);".format(callresult))
+    lines.append("  }")
+    lines.append("  return (unsigned long long)call;")
+    lines.append("}")
+    lines.append("")
+
+
+# ========================================================================
 # config_module.cpp generation
 # ========================================================================
 
@@ -679,10 +778,58 @@ def run_codegen(root_dir=None, check_only=False):
     typedefs = _build_typedef_map(api_data)
     enums = _build_enum_set(api_data)
 
+    # ------------------------------------------------------------------
+    # Callback infrastructure setup
+    # ------------------------------------------------------------------
+    callback_struct_map = cbgen.build_callback_struct_map(api_data)
+    async_struct_names = cbgen.collect_callresult_structs(api_data)
+    broadcast_struct_names = cbgen.collect_broadcast_structs()
+    all_needed_structs = async_struct_names | broadcast_struct_names
+
     generated_files = []
     generated_headers = []
     stale_files = []
 
+    # ------------------------------------------------------------------
+    # Generate callback manager files (steamCallbackManager.h / .cpp)
+    # ------------------------------------------------------------------
+    if all_needed_structs:
+        # steamPython.h - PyObject compatibility header
+        py_compat_content = cbgen.generate_python_compat_header(
+            _GENERATED_BANNER)
+        py_compat_path = os.path.join(output_dir, "steamPython.h")
+        generated_headers.append("steamPython.h")
+
+        cb_header_content = cbgen.generate_callback_manager_header(
+            _GENERATED_BANNER)
+
+        cb_source_content = cbgen.generate_callback_manager_source(
+            async_struct_names,
+            broadcast_struct_names, callback_struct_map,
+            typedefs, enums, _GENERATED_BANNER)
+
+        cb_header_path = os.path.join(output_dir, "steamCallbackManager.h")
+        cb_source_path = os.path.join(output_dir, "steamCallbackManager.cpp")
+
+        generated_headers.append("steamCallbackManager.h")
+
+        for path, content in [(py_compat_path, py_compat_content),
+                              (cb_header_path, cb_header_content),
+                              (cb_source_path, cb_source_content)]:
+            if check_only:
+                if not os.path.isfile(path):
+                    stale_files.append(path)
+                else:
+                    with open(path, "r") as f:
+                        if f.read() != content:
+                            stale_files.append(path)
+            else:
+                _write_if_changed(path, content)
+                generated_files.append(path)
+
+    # ------------------------------------------------------------------
+    # Generate per-interface wrapper files
+    # ------------------------------------------------------------------
     for iface_data in api_data.get("interfaces", []):
         iface_name = iface_data["classname"]
 
@@ -760,7 +907,9 @@ def run_codegen(root_dir=None, check_only=False):
                 _write_if_changed(path, content)
                 generated_files.append(path)
 
+    # ------------------------------------------------------------------
     # Generate config_module.cpp
+    # ------------------------------------------------------------------
     config_content = generate_config_module_cpp(generated_headers)
     config_path = os.path.join(output_dir, "config_module.cpp")
 

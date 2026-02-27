@@ -16,6 +16,10 @@ static ISteamParties *_get_steam_parties() {
   return SteamAPI_SteamParties();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_ChangeNumOpenSlotsCallback_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_JoinPartyCallback_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamParties::get_num_active_beacons
 //       Access: Published, Static
@@ -24,6 +28,66 @@ unsigned int SteamParties::get_num_active_beacons() {
   ISteamParties *iface = _get_steam_parties();
   if (!iface) return 0;
   return iface->GetNumActiveBeacons();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamParties::join_party
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamParties::join_party(unsigned long long beacon_id, PyObject *callback) {
+  ISteamParties *iface = _get_steam_parties();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->JoinParty(beacon_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_JoinPartyCallback_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamParties::on_reservation_completed
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamParties::on_reservation_completed(unsigned long long beacon, unsigned long long steam_id_user) {
+  ISteamParties *iface = _get_steam_parties();
+  if (iface) iface->OnReservationCompleted(beacon, CSteamID(steam_id_user));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamParties::cancel_reservation
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamParties::cancel_reservation(unsigned long long beacon, unsigned long long steam_id_user) {
+  ISteamParties *iface = _get_steam_parties();
+  if (iface) iface->CancelReservation(beacon, CSteamID(steam_id_user));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamParties::change_num_open_slots
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamParties::change_num_open_slots(unsigned long long beacon, unsigned int open_slots, PyObject *callback) {
+  ISteamParties *iface = _get_steam_parties();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->ChangeNumOpenSlots(beacon, open_slots);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_ChangeNumOpenSlotsCallback_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamParties::destroy_beacon
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamParties::destroy_beacon(unsigned long long beacon) {
+  ISteamParties *iface = _get_steam_parties();
+  if (!iface) return false;
+  return iface->DestroyBeacon(beacon);
 }
 
 #endif  // CPPPARSER

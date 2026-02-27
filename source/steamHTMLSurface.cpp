@@ -16,6 +16,9 @@ static ISteamHTMLSurface *_get_steam_html_surface() {
   return SteamAPI_SteamHTMLSurface();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_HTML_BrowserReady_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamHTMLSurface::init
 //       Access: Published, Static
@@ -37,12 +40,262 @@ bool SteamHTMLSurface::shutdown() {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::create_browser
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamHTMLSurface::create_browser(const std::string & user_agent, const std::string & user_css, PyObject *callback) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->CreateBrowser(user_agent.c_str(), user_css.c_str());
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_HTML_BrowserReady_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::remove_browser
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::remove_browser(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->RemoveBrowser(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::load_url
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::load_url(unsigned int browser_handle, const std::string & url, const std::string & post_data) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->LoadURL(browser_handle, url.c_str(), post_data.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::set_size
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::set_size(unsigned int browser_handle, unsigned int width, unsigned int height) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->SetSize(browser_handle, width, height);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::stop_load
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::stop_load(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->StopLoad(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::reload
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::reload(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->Reload(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::go_back
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::go_back(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->GoBack(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::go_forward
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::go_forward(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->GoForward(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::add_header
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::add_header(unsigned int browser_handle, const std::string & key, const std::string & value) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->AddHeader(browser_handle, key.c_str(), value.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::execute_javascript
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::execute_javascript(unsigned int browser_handle, const std::string & script) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->ExecuteJavascript(browser_handle, script.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::mouse_move
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::mouse_move(unsigned int browser_handle, int x, int y) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->MouseMove(browser_handle, x, y);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::mouse_wheel
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::mouse_wheel(unsigned int browser_handle, int delta) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->MouseWheel(browser_handle, delta);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::set_horizontal_scroll
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::set_horizontal_scroll(unsigned int browser_handle, unsigned int absolute_pixel_scroll) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->SetHorizontalScroll(browser_handle, absolute_pixel_scroll);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::set_vertical_scroll
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::set_vertical_scroll(unsigned int browser_handle, unsigned int absolute_pixel_scroll) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->SetVerticalScroll(browser_handle, absolute_pixel_scroll);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::set_key_focus
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::set_key_focus(unsigned int browser_handle, bool has_key_focus) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->SetKeyFocus(browser_handle, has_key_focus);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::view_source
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::view_source(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->ViewSource(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::copy_to_clipboard
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::copy_to_clipboard(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->CopyToClipboard(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::paste_from_clipboard
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::paste_from_clipboard(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->PasteFromClipboard(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::find
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::find(unsigned int browser_handle, const std::string & search_str, bool currently_in_find, bool reverse) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->Find(browser_handle, search_str.c_str(), currently_in_find, reverse);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::stop_find
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::stop_find(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->StopFind(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::get_link_at_position
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::get_link_at_position(unsigned int browser_handle, int x, int y) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->GetLinkAtPosition(browser_handle, x, y);
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamHTMLSurface::set_cookie
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
 void SteamHTMLSurface::set_cookie(const std::string & hostname, const std::string & key, const std::string & value, const std::string & path, unsigned int expires, bool secure, bool http_only) {
   ISteamHTMLSurface *iface = _get_steam_html_surface();
   if (iface) iface->SetCookie(hostname.c_str(), key.c_str(), value.c_str(), path.c_str(), expires, secure, http_only);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::set_page_scale_factor
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::set_page_scale_factor(unsigned int browser_handle, float zoom, int point_x, int point_y) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->SetPageScaleFactor(browser_handle, zoom, point_x, point_y);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::set_background_mode
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::set_background_mode(unsigned int browser_handle, bool background_mode) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->SetBackgroundMode(browser_handle, background_mode);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::set_dpi_scaling_factor
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::set_dpi_scaling_factor(unsigned int browser_handle, float dpi_scaling) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->SetDPIScalingFactor(browser_handle, dpi_scaling);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::open_developer_tools
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::open_developer_tools(unsigned int browser_handle) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->OpenDeveloperTools(browser_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::allow_start_request
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::allow_start_request(unsigned int browser_handle, bool allowed) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->AllowStartRequest(browser_handle, allowed);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamHTMLSurface::js_dialog_response
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamHTMLSurface::js_dialog_response(unsigned int browser_handle, bool result) {
+  ISteamHTMLSurface *iface = _get_steam_html_surface();
+  if (iface) iface->JSDialogResponse(browser_handle, result);
 }
 
 #endif  // CPPPARSER

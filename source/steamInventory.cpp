@@ -16,6 +16,10 @@ static ISteamInventory *_get_steam_inventory() {
   return SteamAPI_SteamInventory();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_SteamInventoryEligiblePromoItemDefIDs_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_SteamInventoryRequestPricesResult_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamInventory::get_result_status
 //       Access: Published, Static
@@ -34,6 +38,16 @@ unsigned int SteamInventory::get_result_timestamp(int result_handle) {
   ISteamInventory *iface = _get_steam_inventory();
   if (!iface) return 0;
   return iface->GetResultTimestamp(result_handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamInventory::check_result_steam_id
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamInventory::check_result_steam_id(int result_handle, unsigned long long steam_id_expected) {
+  ISteamInventory *iface = _get_steam_inventory();
+  if (!iface) return false;
+  return iface->CheckResultSteamID(result_handle, CSteamID(steam_id_expected));
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -62,6 +76,38 @@ bool SteamInventory::load_item_definitions() {
   ISteamInventory *iface = _get_steam_inventory();
   if (!iface) return false;
   return iface->LoadItemDefinitions();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamInventory::request_eligible_promo_item_definitions_i_ds
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamInventory::request_eligible_promo_item_definitions_i_ds(unsigned long long steam_id, PyObject *callback) {
+  ISteamInventory *iface = _get_steam_inventory();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestEligiblePromoItemDefinitionsIDs(CSteamID(steam_id));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_SteamInventoryEligiblePromoItemDefIDs_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamInventory::request_prices
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamInventory::request_prices(PyObject *callback) {
+  ISteamInventory *iface = _get_steam_inventory();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestPrices();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_SteamInventoryRequestPricesResult_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////

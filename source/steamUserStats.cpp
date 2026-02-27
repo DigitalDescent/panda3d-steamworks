@@ -16,6 +16,15 @@ static ISteamUserStats *_get_steam_user_stats() {
   return SteamAPI_SteamUserStats();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_GlobalAchievementPercentagesReady_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_GlobalStatsReceived_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_LeaderboardFindResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_LeaderboardScoresDownloaded_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_LeaderboardUGCSet_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_NumberOfCurrentPlayers_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_UserStatsReceived_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamUserStats::set_stat
 //       Access: Published, Static
@@ -129,6 +138,22 @@ std::string SteamUserStats::get_achievement_name(unsigned int achievement) {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::request_user_stats
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUserStats::request_user_stats(unsigned long long steam_id_user, PyObject *callback) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestUserStats(CSteamID(steam_id_user));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_UserStatsReceived_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamUserStats::reset_all_stats
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -136,6 +161,159 @@ bool SteamUserStats::reset_all_stats(bool achievements_too) {
   ISteamUserStats *iface = _get_steam_user_stats();
   if (!iface) return false;
   return iface->ResetAllStats(achievements_too);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::find_or_create_leaderboard
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUserStats::find_or_create_leaderboard(const std::string & leaderboard_name, int leaderboard_sort_method, int leaderboard_display_type, PyObject *callback) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->FindOrCreateLeaderboard(leaderboard_name.c_str(), static_cast<ELeaderboardSortMethod>(leaderboard_sort_method), static_cast<ELeaderboardDisplayType>(leaderboard_display_type));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_LeaderboardFindResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::find_leaderboard
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUserStats::find_leaderboard(const std::string & leaderboard_name, PyObject *callback) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->FindLeaderboard(leaderboard_name.c_str());
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_LeaderboardFindResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::get_leaderboard_name
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamUserStats::get_leaderboard_name(unsigned long long h_steam_leaderboard) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return std::string();
+  const char *result = iface->GetLeaderboardName(h_steam_leaderboard);
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::get_leaderboard_entry_count
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamUserStats::get_leaderboard_entry_count(unsigned long long h_steam_leaderboard) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  return iface->GetLeaderboardEntryCount(h_steam_leaderboard);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::get_leaderboard_sort_method
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamUserStats::get_leaderboard_sort_method(unsigned long long h_steam_leaderboard) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  return iface->GetLeaderboardSortMethod(h_steam_leaderboard);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::get_leaderboard_display_type
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamUserStats::get_leaderboard_display_type(unsigned long long h_steam_leaderboard) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  return iface->GetLeaderboardDisplayType(h_steam_leaderboard);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::download_leaderboard_entries
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUserStats::download_leaderboard_entries(unsigned long long h_steam_leaderboard, int leaderboard_data_request, int range_start, int range_end, PyObject *callback) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->DownloadLeaderboardEntries(h_steam_leaderboard, static_cast<ELeaderboardDataRequest>(leaderboard_data_request), range_start, range_end);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_LeaderboardScoresDownloaded_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::attach_leaderboard_ugc
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUserStats::attach_leaderboard_ugc(unsigned long long h_steam_leaderboard, unsigned long long h_ugc, PyObject *callback) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->AttachLeaderboardUGC(h_steam_leaderboard, h_ugc);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_LeaderboardUGCSet_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::get_number_of_current_players
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUserStats::get_number_of_current_players(PyObject *callback) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetNumberOfCurrentPlayers();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_NumberOfCurrentPlayers_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::request_global_achievement_percentages
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUserStats::request_global_achievement_percentages(PyObject *callback) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestGlobalAchievementPercentages();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_GlobalAchievementPercentagesReady_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUserStats::request_global_stats
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUserStats::request_global_stats(int history_days, PyObject *callback) {
+  ISteamUserStats *iface = _get_steam_user_stats();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestGlobalStats(history_days);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_GlobalStatsReceived_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 #endif  // CPPPARSER

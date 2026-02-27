@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include <string>
 
 ////////////////////////////////////////////////////////////////////
 //       Class : SteamScreenshots
@@ -15,6 +16,9 @@ class EXPORT_CLASS SteamScreenshots {
 PUBLISHED:
   static void trigger_screenshot();
   static void hook_screenshots(bool hook);
+  static bool set_location(unsigned int h_screenshot, const std::string & location);
+  static bool tag_user(unsigned int h_screenshot, unsigned long long steam_id);
+  static bool tag_published_file(unsigned int h_screenshot, unsigned long long published_file_id);
   static bool is_screenshots_hooked();
 
 private:

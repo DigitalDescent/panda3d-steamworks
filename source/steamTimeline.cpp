@@ -16,6 +16,9 @@ static ISteamTimeline *_get_steam_timeline() {
   return SteamAPI_SteamTimeline();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_SteamTimelineGamePhaseRecordingExists_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamTimeline::set_timeline_tooltip
 //       Access: Published, Static
@@ -68,6 +71,22 @@ void SteamTimeline::end_game_phase() {
 void SteamTimeline::set_game_phase_id(const std::string & phase_id) {
   ISteamTimeline *iface = _get_steam_timeline();
   if (iface) iface->SetGamePhaseID(phase_id.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamTimeline::does_game_phase_recording_exist
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamTimeline::does_game_phase_recording_exist(const std::string & phase_id, PyObject *callback) {
+  ISteamTimeline *iface = _get_steam_timeline();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->DoesGamePhaseRecordingExist(phase_id.c_str());
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_SteamTimelineGamePhaseRecordingExists_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////

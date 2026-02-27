@@ -17,6 +17,36 @@ static ISteamNetworking *_get_steam_networking() {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamNetworking::accept_p2_p_session_with_user
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamNetworking::accept_p2_p_session_with_user(unsigned long long steam_id_remote) {
+  ISteamNetworking *iface = _get_steam_networking();
+  if (!iface) return false;
+  return iface->AcceptP2PSessionWithUser(CSteamID(steam_id_remote));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamNetworking::close_p2_p_session_with_user
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamNetworking::close_p2_p_session_with_user(unsigned long long steam_id_remote) {
+  ISteamNetworking *iface = _get_steam_networking();
+  if (!iface) return false;
+  return iface->CloseP2PSessionWithUser(CSteamID(steam_id_remote));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamNetworking::close_p2_p_channel_with_user
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamNetworking::close_p2_p_channel_with_user(unsigned long long steam_id_remote, int channel) {
+  ISteamNetworking *iface = _get_steam_networking();
+  if (!iface) return false;
+  return iface->CloseP2PChannelWithUser(CSteamID(steam_id_remote), channel);
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamNetworking::allow_p2_p_packet_relay
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////

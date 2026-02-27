@@ -16,6 +16,11 @@ static ISteamUser *_get_steam_user() {
   return SteamAPI_SteamUser();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_DurationControl_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_MarketEligibilityResponse_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_StoreAuthURLResponse_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamUser::get_h_steam_user
 //       Access: Published, Static
@@ -107,12 +112,31 @@ unsigned int SteamUser::get_auth_ticket_for_web_api(const std::string & identity
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamUser::end_auth_session
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamUser::end_auth_session(unsigned long long steam_id) {
+  ISteamUser *iface = _get_steam_user();
+  if (iface) iface->EndAuthSession(CSteamID(steam_id));
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamUser::cancel_auth_ticket
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
 void SteamUser::cancel_auth_ticket(unsigned int h_auth_ticket) {
   ISteamUser *iface = _get_steam_user();
   if (iface) iface->CancelAuthTicket(h_auth_ticket);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUser::user_has_license_for_app
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamUser::user_has_license_for_app(unsigned long long steam_id, unsigned int app_id) {
+  ISteamUser *iface = _get_steam_user();
+  if (!iface) return 0;
+  return iface->UserHasLicenseForApp(CSteamID(steam_id), app_id);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -123,6 +147,15 @@ bool SteamUser::is_behind_nat() {
   ISteamUser *iface = _get_steam_user();
   if (!iface) return false;
   return iface->BIsBehindNAT();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUser::advertise_game
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamUser::advertise_game(unsigned long long steam_id_game_server, unsigned int ip_server, unsigned short us_port_server) {
+  ISteamUser *iface = _get_steam_user();
+  if (iface) iface->AdvertiseGame(CSteamID(steam_id_game_server), ip_server, us_port_server);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -143,6 +176,22 @@ int SteamUser::get_player_steam_level() {
   ISteamUser *iface = _get_steam_user();
   if (!iface) return 0;
   return iface->GetPlayerSteamLevel();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUser::request_store_auth_url
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUser::request_store_auth_url(const std::string & redirect_url, PyObject *callback) {
+  ISteamUser *iface = _get_steam_user();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestStoreAuthURL(redirect_url.c_str());
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_StoreAuthURLResponse_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -183,6 +232,38 @@ bool SteamUser::is_phone_requiring_verification() {
   ISteamUser *iface = _get_steam_user();
   if (!iface) return false;
   return iface->BIsPhoneRequiringVerification();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUser::get_market_eligibility
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUser::get_market_eligibility(PyObject *callback) {
+  ISteamUser *iface = _get_steam_user();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetMarketEligibility();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_MarketEligibilityResponse_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUser::get_duration_control
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUser::get_duration_control(PyObject *callback) {
+  ISteamUser *iface = _get_steam_user();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetDurationControl();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_DurationControl_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////

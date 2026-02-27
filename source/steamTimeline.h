@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include "steamPython.h"
 #include <string>
 
 ////////////////////////////////////////////////////////////////////
@@ -20,6 +21,9 @@ PUBLISHED:
   static void start_game_phase();
   static void end_game_phase();
   static void set_game_phase_id(const std::string & phase_id);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long does_game_phase_recording_exist(const std::string & phase_id, PyObject *callback);
   static void add_game_phase_tag(const std::string & tag_name, const std::string & tag_icon, const std::string & tag_group, unsigned int priority);
   static void set_game_phase_attribute(const std::string & attribute_group, const std::string & attribute_value, unsigned int priority);
   static void open_overlay_to_game_phase(const std::string & phase_id);

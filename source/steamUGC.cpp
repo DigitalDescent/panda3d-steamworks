@@ -16,6 +16,703 @@ static ISteamUGC *_get_steam_ugc() {
   return SteamAPI_SteamUGC();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_AddAppDependencyResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_AddUGCDependencyResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_CreateItemResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_DeleteItemResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_GetAppDependenciesResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_GetUserItemVoteResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageSubscribePublishedFileResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageUnsubscribePublishedFileResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoveAppDependencyResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoveUGCDependencyResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_SetUserItemVoteResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_SteamUGCQueryCompleted_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_SteamUGCRequestUGCDetailsResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_StopPlaytimeTrackingResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_SubmitItemUpdateResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_UserFavoriteItemsListChanged_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_WorkshopEULAStatus_t(SteamAPICall_t, PyObject *);
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::send_query_ugc_request
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::send_query_ugc_request(unsigned long long handle, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->SendQueryUGCRequest(handle);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_SteamUGCQueryCompleted_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_num_tags
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned int SteamUGC::get_query_ugc_num_tags(unsigned long long handle, unsigned int index) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  return iface->GetQueryUGCNumTags(handle, index);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamUGC::get_query_ugc_tag(unsigned long long handle, unsigned int index, unsigned int index_tag) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return std::string();
+  char buf[1024];
+  bool ok = iface->GetQueryUGCTag(handle, index, index_tag, buf, sizeof(buf));
+  if (ok) return std::string(buf);
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_tag_display_name
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamUGC::get_query_ugc_tag_display_name(unsigned long long handle, unsigned int index, unsigned int index_tag) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return std::string();
+  char buf[1024];
+  bool ok = iface->GetQueryUGCTagDisplayName(handle, index, index_tag, buf, sizeof(buf));
+  if (ok) return std::string(buf);
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_preview_url
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamUGC::get_query_ugc_preview_url(unsigned long long handle, unsigned int index) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return std::string();
+  char buf[1024];
+  bool ok = iface->GetQueryUGCPreviewURL(handle, index, buf, sizeof(buf));
+  if (ok) return std::string(buf);
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_metadata
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamUGC::get_query_ugc_metadata(unsigned long long handle, unsigned int index) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return std::string();
+  char buf[1024];
+  bool ok = iface->GetQueryUGCMetadata(handle, index, buf, sizeof(buf));
+  if (ok) return std::string(buf);
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_num_additional_previews
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned int SteamUGC::get_query_ugc_num_additional_previews(unsigned long long handle, unsigned int index) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  return iface->GetQueryUGCNumAdditionalPreviews(handle, index);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_num_key_value_tags
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned int SteamUGC::get_query_ugc_num_key_value_tags(unsigned long long handle, unsigned int index) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  return iface->GetQueryUGCNumKeyValueTags(handle, index);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_key_value_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamUGC::get_query_ugc_key_value_tag(unsigned long long handle, unsigned int index, unsigned int key_value_tag_index) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return std::string();
+  char buf[1024];
+  bool ok = iface->GetQueryUGCKeyValueTag(handle, index, key_value_tag_index, buf, sizeof(buf), buf, sizeof(buf));
+  if (ok) return std::string(buf);
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_query_ugc_key_value_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamUGC::get_query_ugc_key_value_tag(unsigned long long handle, unsigned int index, const std::string & key) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return std::string();
+  char buf[1024];
+  bool ok = iface->GetQueryUGCKeyValueTag(handle, index, key.c_str(), buf, sizeof(buf));
+  if (ok) return std::string(buf);
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_num_supported_game_versions
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned int SteamUGC::get_num_supported_game_versions(unsigned long long handle, unsigned int index) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  return iface->GetNumSupportedGameVersions(handle, index);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::release_query_ugc_request
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::release_query_ugc_request(unsigned long long handle) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->ReleaseQueryUGCRequest(handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_required_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::add_required_tag(unsigned long long handle, const std::string & tag_name) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->AddRequiredTag(handle, tag_name.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_excluded_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::add_excluded_tag(unsigned long long handle, const std::string & tag_name) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->AddExcludedTag(handle, tag_name.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_return_only_i_ds
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_return_only_i_ds(unsigned long long handle, bool return_only_i_ds) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetReturnOnlyIDs(handle, return_only_i_ds);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_return_key_value_tags
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_return_key_value_tags(unsigned long long handle, bool return_key_value_tags) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetReturnKeyValueTags(handle, return_key_value_tags);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_return_long_description
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_return_long_description(unsigned long long handle, bool return_long_description) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetReturnLongDescription(handle, return_long_description);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_return_metadata
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_return_metadata(unsigned long long handle, bool return_metadata) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetReturnMetadata(handle, return_metadata);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_return_children
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_return_children(unsigned long long handle, bool return_children) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetReturnChildren(handle, return_children);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_return_additional_previews
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_return_additional_previews(unsigned long long handle, bool return_additional_previews) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetReturnAdditionalPreviews(handle, return_additional_previews);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_return_total_only
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_return_total_only(unsigned long long handle, bool return_total_only) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetReturnTotalOnly(handle, return_total_only);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_return_playtime_stats
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_return_playtime_stats(unsigned long long handle, unsigned int days) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetReturnPlaytimeStats(handle, days);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_language
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_language(unsigned long long handle, const std::string & language) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetLanguage(handle, language.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_allow_cached_response
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_allow_cached_response(unsigned long long handle, unsigned int max_age_seconds) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetAllowCachedResponse(handle, max_age_seconds);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_admin_query
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_admin_query(unsigned long long handle, bool admin_query) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetAdminQuery(handle, admin_query);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_cloud_file_name_filter
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_cloud_file_name_filter(unsigned long long handle, const std::string & match_cloud_file_name) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetCloudFileNameFilter(handle, match_cloud_file_name.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_match_any_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_match_any_tag(unsigned long long handle, bool match_any_tag) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetMatchAnyTag(handle, match_any_tag);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_search_text
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_search_text(unsigned long long handle, const std::string & search_text) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetSearchText(handle, search_text.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_ranked_by_trend_days
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_ranked_by_trend_days(unsigned long long handle, unsigned int days) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetRankedByTrendDays(handle, days);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_time_created_date_range
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_time_created_date_range(unsigned long long handle, unsigned int rt_start, unsigned int rt_end) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetTimeCreatedDateRange(handle, rt_start, rt_end);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_time_updated_date_range
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_time_updated_date_range(unsigned long long handle, unsigned int rt_start, unsigned int rt_end) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetTimeUpdatedDateRange(handle, rt_start, rt_end);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_required_key_value_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::add_required_key_value_tag(unsigned long long handle, const std::string & key, const std::string & value) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->AddRequiredKeyValueTag(handle, key.c_str(), value.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::request_ugc_details
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::request_ugc_details(unsigned long long published_file_id, unsigned int max_age_seconds, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestUGCDetails(published_file_id, max_age_seconds);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_SteamUGCRequestUGCDetailsResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::create_item
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::create_item(unsigned int consumer_app_id, int file_type, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->CreateItem(consumer_app_id, static_cast<EWorkshopFileType>(file_type));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_CreateItemResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_item_title
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_item_title(unsigned long long handle, const std::string & title) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetItemTitle(handle, title.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_item_description
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_item_description(unsigned long long handle, const std::string & description) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetItemDescription(handle, description.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_item_update_language
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_item_update_language(unsigned long long handle, const std::string & language) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetItemUpdateLanguage(handle, language.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_item_metadata
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_item_metadata(unsigned long long handle, const std::string & meta_data) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetItemMetadata(handle, meta_data.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_item_visibility
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_item_visibility(unsigned long long handle, int visibility) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetItemVisibility(handle, static_cast<ERemoteStoragePublishedFileVisibility>(visibility));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_item_content
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_item_content(unsigned long long handle, const std::string & content_folder) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetItemContent(handle, content_folder.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_item_preview
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_item_preview(unsigned long long handle, const std::string & preview_file) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetItemPreview(handle, preview_file.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_allow_legacy_upload
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_allow_legacy_upload(unsigned long long handle, bool allow_legacy_upload) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetAllowLegacyUpload(handle, allow_legacy_upload);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::remove_all_item_key_value_tags
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::remove_all_item_key_value_tags(unsigned long long handle) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->RemoveAllItemKeyValueTags(handle);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::remove_item_key_value_tags
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::remove_item_key_value_tags(unsigned long long handle, const std::string & key) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->RemoveItemKeyValueTags(handle, key.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_item_key_value_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::add_item_key_value_tag(unsigned long long handle, const std::string & key, const std::string & value) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->AddItemKeyValueTag(handle, key.c_str(), value.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_item_preview_file
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::add_item_preview_file(unsigned long long handle, const std::string & preview_file, int type) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->AddItemPreviewFile(handle, preview_file.c_str(), static_cast<EItemPreviewType>(type));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_item_preview_video
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::add_item_preview_video(unsigned long long handle, const std::string & video_id) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->AddItemPreviewVideo(handle, video_id.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::update_item_preview_file
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::update_item_preview_file(unsigned long long handle, unsigned int index, const std::string & preview_file) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->UpdateItemPreviewFile(handle, index, preview_file.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::update_item_preview_video
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::update_item_preview_video(unsigned long long handle, unsigned int index, const std::string & video_id) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->UpdateItemPreviewVideo(handle, index, video_id.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::remove_item_preview
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::remove_item_preview(unsigned long long handle, unsigned int index) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->RemoveItemPreview(handle, index);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_content_descriptor
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::add_content_descriptor(unsigned long long handle, int descid) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->AddContentDescriptor(handle, static_cast<EUGCContentDescriptorID>(descid));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::remove_content_descriptor
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::remove_content_descriptor(unsigned long long handle, int descid) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->RemoveContentDescriptor(handle, static_cast<EUGCContentDescriptorID>(descid));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_required_game_versions
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::set_required_game_versions(unsigned long long handle, const std::string & game_branch_min, const std::string & game_branch_max) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->SetRequiredGameVersions(handle, game_branch_min.c_str(), game_branch_max.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::submit_item_update
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::submit_item_update(unsigned long long handle, const std::string & change_note, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->SubmitItemUpdate(handle, change_note.c_str());
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_SubmitItemUpdateResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::set_user_item_vote
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::set_user_item_vote(unsigned long long published_file_id, bool vote_up, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->SetUserItemVote(published_file_id, vote_up);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_SetUserItemVoteResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_user_item_vote
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::get_user_item_vote(unsigned long long published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetUserItemVote(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_GetUserItemVoteResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_item_to_favorites
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::add_item_to_favorites(unsigned int app_id, unsigned long long published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->AddItemToFavorites(app_id, published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_UserFavoriteItemsListChanged_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::remove_item_from_favorites
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::remove_item_from_favorites(unsigned int app_id, unsigned long long published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RemoveItemFromFavorites(app_id, published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_UserFavoriteItemsListChanged_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::subscribe_item
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::subscribe_item(unsigned long long published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->SubscribeItem(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageSubscribePublishedFileResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::unsubscribe_item
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::unsubscribe_item(unsigned long long published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->UnsubscribeItem(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageUnsubscribePublishedFileResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamUGC::get_num_subscribed_items
 //       Access: Published, Static
@@ -24,6 +721,26 @@ unsigned int SteamUGC::get_num_subscribed_items(bool include_locally_disabled) {
   ISteamUGC *iface = _get_steam_ugc();
   if (!iface) return 0;
   return iface->GetNumSubscribedItems(include_locally_disabled);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_item_state
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned int SteamUGC::get_item_state(unsigned long long published_file_id) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  return iface->GetItemState(published_file_id);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::download_item
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamUGC::download_item(unsigned long long published_file_id, bool high_priority) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return false;
+  return iface->DownloadItem(published_file_id, high_priority);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -46,6 +763,118 @@ void SteamUGC::suspend_downloads(bool suspend) {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::stop_playtime_tracking_for_all_items
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::stop_playtime_tracking_for_all_items(PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->StopPlaytimeTrackingForAllItems();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_StopPlaytimeTrackingResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_dependency
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::add_dependency(unsigned long long parent_published_file_id, unsigned long long child_published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->AddDependency(parent_published_file_id, child_published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_AddUGCDependencyResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::remove_dependency
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::remove_dependency(unsigned long long parent_published_file_id, unsigned long long child_published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RemoveDependency(parent_published_file_id, child_published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoveUGCDependencyResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::add_app_dependency
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::add_app_dependency(unsigned long long published_file_id, unsigned int app_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->AddAppDependency(published_file_id, app_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_AddAppDependencyResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::remove_app_dependency
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::remove_app_dependency(unsigned long long published_file_id, unsigned int app_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RemoveAppDependency(published_file_id, app_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoveAppDependencyResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_app_dependencies
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::get_app_dependencies(unsigned long long published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetAppDependencies(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_GetAppDependenciesResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::delete_item
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::delete_item(unsigned long long published_file_id, PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->DeleteItem(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_DeleteItemResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamUGC::show_workshop_eula
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -53,6 +882,22 @@ bool SteamUGC::show_workshop_eula() {
   ISteamUGC *iface = _get_steam_ugc();
   if (!iface) return false;
   return iface->ShowWorkshopEULA();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUGC::get_workshop_eula_status
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUGC::get_workshop_eula_status(PyObject *callback) {
+  ISteamUGC *iface = _get_steam_ugc();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetWorkshopEULAStatus();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_WorkshopEULAStatus_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 #endif  // CPPPARSER

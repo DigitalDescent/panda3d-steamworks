@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include "steamPython.h"
 #include <string>
 
 ////////////////////////////////////////////////////////////////////
@@ -25,6 +26,9 @@ PUBLISHED:
   static unsigned int get_ipc_call_count();
   static bool is_overlay_enabled();
   static bool overlay_needs_present();
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long check_file_signature(const std::string & file_name, PyObject *callback);
   static bool show_gamepad_text_input(int input_mode, int line_input_mode, const std::string & description, unsigned int char_max, const std::string & existing_text);
   static unsigned int get_entered_gamepad_text_length();
   static std::string get_entered_gamepad_text_input();
@@ -37,6 +41,7 @@ PUBLISHED:
   static void set_vr_headset_streaming_enabled(bool enabled);
   static bool is_steam_china_launcher();
   static bool init_filter_text(unsigned int filter_options);
+  static std::string filter_text(int context, unsigned long long source_steam_id, const std::string & input_message);
   static int get_i_pv6_connectivity_state(int protocol);
   static bool is_steam_running_on_steam_deck();
   static bool show_floating_gamepad_text_input(int keyboard_mode, int text_field_x_position, int text_field_y_position, int text_field_width, int text_field_height);

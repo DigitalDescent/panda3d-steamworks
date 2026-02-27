@@ -34,6 +34,9 @@ void SteamApps::shutdown() {
   SteamAPI_Shutdown();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_FileDetailsResult_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamApps::is_subscribed
 //       Access: Published, Static
@@ -257,6 +260,22 @@ int SteamApps::get_app_build_id() {
 void SteamApps::request_all_proof_of_purchase_keys() {
   ISteamApps *iface = _get_steam_apps();
   if (iface) iface->RequestAllProofOfPurchaseKeys();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamApps::get_file_details
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamApps::get_file_details(const std::string & file_name, PyObject *callback) {
+  ISteamApps *iface = _get_steam_apps();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetFileDetails(file_name.c_str());
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_FileDetailsResult_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////

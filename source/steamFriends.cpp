@@ -16,6 +16,14 @@ static ISteamFriends *_get_steam_friends() {
   return SteamAPI_SteamFriends();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_ClanOfficerListResponse_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_EquippedProfileItems_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_FriendsEnumerateFollowingList_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_FriendsGetFollowerCount_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_FriendsIsFollowing_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_JoinClanChatRoomCompletionResult_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamFriends::get_persona_name
 //       Access: Published, Static
@@ -58,6 +66,69 @@ unsigned long long SteamFriends::get_friend_by_index(int friend_val, int friend_
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_relationship
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_friend_relationship(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetFriendRelationship(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_persona_state
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_friend_persona_state(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetFriendPersonaState(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_persona_name
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamFriends::get_friend_persona_name(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return std::string();
+  const char *result = iface->GetFriendPersonaName(CSteamID(steam_id_friend));
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_persona_name_history
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamFriends::get_friend_persona_name_history(unsigned long long steam_id_friend, int persona_name) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return std::string();
+  const char *result = iface->GetFriendPersonaNameHistory(CSteamID(steam_id_friend), persona_name);
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_steam_level
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_friend_steam_level(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetFriendSteamLevel(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_player_nickname
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamFriends::get_player_nickname(unsigned long long steam_id_player) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return std::string();
+  const char *result = iface->GetPlayerNickname(CSteamID(steam_id_player));
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamFriends::get_friends_group_count
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -65,6 +136,16 @@ int SteamFriends::get_friends_group_count() {
   ISteamFriends *iface = _get_steam_friends();
   if (!iface) return 0;
   return iface->GetFriendsGroupCount();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::has_friend
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::has_friend(unsigned long long steam_id_friend, int friend_flags) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->HasFriend(CSteamID(steam_id_friend), friend_flags);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -88,12 +169,82 @@ unsigned long long SteamFriends::get_clan_by_index(int clan) {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_clan_name
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamFriends::get_clan_name(unsigned long long steam_id_clan) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return std::string();
+  const char *result = iface->GetClanName(CSteamID(steam_id_clan));
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_clan_tag
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamFriends::get_clan_tag(unsigned long long steam_id_clan) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return std::string();
+  const char *result = iface->GetClanTag(CSteamID(steam_id_clan));
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_count_from_source
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_friend_count_from_source(unsigned long long steam_id_source) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetFriendCountFromSource(CSteamID(steam_id_source));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_from_source_by_index
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::get_friend_from_source_by_index(unsigned long long steam_id_source, int friend_val) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetFriendFromSourceByIndex(CSteamID(steam_id_source), friend_val).ConvertToUint64();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::is_user_in_source
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::is_user_in_source(unsigned long long steam_id_user, unsigned long long steam_id_source) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->IsUserInSource(CSteamID(steam_id_user), CSteamID(steam_id_source));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::set_in_game_voice_speaking
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamFriends::set_in_game_voice_speaking(unsigned long long steam_id_user, bool speaking) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (iface) iface->SetInGameVoiceSpeaking(CSteamID(steam_id_user), speaking);
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamFriends::activate_game_overlay
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
 void SteamFriends::activate_game_overlay(const std::string & dialog) {
   ISteamFriends *iface = _get_steam_friends();
   if (iface) iface->ActivateGameOverlay(dialog.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::activate_game_overlay_to_user
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamFriends::activate_game_overlay_to_user(const std::string & dialog, unsigned long long steam_id) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (iface) iface->ActivateGameOverlayToUser(dialog.c_str(), CSteamID(steam_id));
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -115,6 +266,110 @@ void SteamFriends::activate_game_overlay_to_store(unsigned int app_id, int flag)
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::set_played_with
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamFriends::set_played_with(unsigned long long steam_id_user_played_with) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (iface) iface->SetPlayedWith(CSteamID(steam_id_user_played_with));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::activate_game_overlay_invite_dialog
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamFriends::activate_game_overlay_invite_dialog(unsigned long long steam_id_lobby) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (iface) iface->ActivateGameOverlayInviteDialog(CSteamID(steam_id_lobby));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_small_friend_avatar
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_small_friend_avatar(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetSmallFriendAvatar(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_medium_friend_avatar
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_medium_friend_avatar(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetMediumFriendAvatar(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_large_friend_avatar
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_large_friend_avatar(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetLargeFriendAvatar(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::request_user_information
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::request_user_information(unsigned long long steam_id_user, bool require_name_only) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->RequestUserInformation(CSteamID(steam_id_user), require_name_only);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::request_clan_officer_list
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::request_clan_officer_list(unsigned long long steam_id_clan, PyObject *callback) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestClanOfficerList(CSteamID(steam_id_clan));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_ClanOfficerListResponse_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_clan_owner
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::get_clan_owner(unsigned long long steam_id_clan) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetClanOwner(CSteamID(steam_id_clan)).ConvertToUint64();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_clan_officer_count
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_clan_officer_count(unsigned long long steam_id_clan) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetClanOfficerCount(CSteamID(steam_id_clan));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_clan_officer_by_index
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::get_clan_officer_by_index(unsigned long long steam_id_clan, int officer) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetClanOfficerByIndex(CSteamID(steam_id_clan), officer).ConvertToUint64();
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamFriends::set_rich_presence
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -131,6 +386,57 @@ bool SteamFriends::set_rich_presence(const std::string & key, const std::string 
 void SteamFriends::clear_rich_presence() {
   ISteamFriends *iface = _get_steam_friends();
   if (iface) iface->ClearRichPresence();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_rich_presence
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamFriends::get_friend_rich_presence(unsigned long long steam_id_friend, const std::string & key) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return std::string();
+  const char *result = iface->GetFriendRichPresence(CSteamID(steam_id_friend), key.c_str());
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_rich_presence_key_count
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_friend_rich_presence_key_count(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetFriendRichPresenceKeyCount(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_rich_presence_key_by_index
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamFriends::get_friend_rich_presence_key_by_index(unsigned long long steam_id_friend, int key) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return std::string();
+  const char *result = iface->GetFriendRichPresenceKeyByIndex(CSteamID(steam_id_friend), key);
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::request_friend_rich_presence
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamFriends::request_friend_rich_presence(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (iface) iface->RequestFriendRichPresence(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::invite_user_to_game
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::invite_user_to_game(unsigned long long steam_id_friend, const std::string & connect_string) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->InviteUserToGame(CSteamID(steam_id_friend), connect_string.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -154,6 +460,122 @@ unsigned long long SteamFriends::get_coplay_friend(int coplay_friend) {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_coplay_time
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_friend_coplay_time(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetFriendCoplayTime(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_friend_coplay_game
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned int SteamFriends::get_friend_coplay_game(unsigned long long steam_id_friend) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetFriendCoplayGame(CSteamID(steam_id_friend));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::join_clan_chat_room
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::join_clan_chat_room(unsigned long long steam_id_clan, PyObject *callback) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->JoinClanChatRoom(CSteamID(steam_id_clan));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_JoinClanChatRoomCompletionResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::leave_clan_chat_room
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::leave_clan_chat_room(unsigned long long steam_id_clan) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->LeaveClanChatRoom(CSteamID(steam_id_clan));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_clan_chat_member_count
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamFriends::get_clan_chat_member_count(unsigned long long steam_id_clan) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetClanChatMemberCount(CSteamID(steam_id_clan));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_chat_member_by_index
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::get_chat_member_by_index(unsigned long long steam_id_clan, int user) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetChatMemberByIndex(CSteamID(steam_id_clan), user).ConvertToUint64();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::send_clan_chat_message
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::send_clan_chat_message(unsigned long long steam_id_clan_chat, const std::string & text) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->SendClanChatMessage(CSteamID(steam_id_clan_chat), text.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::is_clan_chat_admin
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::is_clan_chat_admin(unsigned long long steam_id_clan_chat, unsigned long long steam_id_user) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->IsClanChatAdmin(CSteamID(steam_id_clan_chat), CSteamID(steam_id_user));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::is_clan_chat_window_open_in_steam
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::is_clan_chat_window_open_in_steam(unsigned long long steam_id_clan_chat) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->IsClanChatWindowOpenInSteam(CSteamID(steam_id_clan_chat));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::open_clan_chat_window_in_steam
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::open_clan_chat_window_in_steam(unsigned long long steam_id_clan_chat) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->OpenClanChatWindowInSteam(CSteamID(steam_id_clan_chat));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::close_clan_chat_window_in_steam
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::close_clan_chat_window_in_steam(unsigned long long steam_id_clan_chat) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->CloseClanChatWindowInSteam(CSteamID(steam_id_clan_chat));
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamFriends::set_listen_for_friends_messages
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -164,6 +586,84 @@ bool SteamFriends::set_listen_for_friends_messages(bool intercept_enabled) {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::reply_to_friend_message
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::reply_to_friend_message(unsigned long long steam_id_friend, const std::string & msg_to_send) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->ReplyToFriendMessage(CSteamID(steam_id_friend), msg_to_send.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_follower_count
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::get_follower_count(unsigned long long steam_id, PyObject *callback) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetFollowerCount(CSteamID(steam_id));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_FriendsGetFollowerCount_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::is_following
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::is_following(unsigned long long steam_id, PyObject *callback) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->IsFollowing(CSteamID(steam_id));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_FriendsIsFollowing_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::enumerate_following_list
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::enumerate_following_list(unsigned int start_index, PyObject *callback) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->EnumerateFollowingList(start_index);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_FriendsEnumerateFollowingList_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::is_clan_public
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::is_clan_public(unsigned long long steam_id_clan) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->IsClanPublic(CSteamID(steam_id_clan));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::is_clan_official_game_group
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::is_clan_official_game_group(unsigned long long steam_id_clan) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->IsClanOfficialGameGroup(CSteamID(steam_id_clan));
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamFriends::get_num_chats_with_unread_priority_messages
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -171,6 +671,15 @@ int SteamFriends::get_num_chats_with_unread_priority_messages() {
   ISteamFriends *iface = _get_steam_friends();
   if (!iface) return 0;
   return iface->GetNumChatsWithUnreadPriorityMessages();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::activate_game_overlay_remote_play_together_invite_dialog
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamFriends::activate_game_overlay_remote_play_together_invite_dialog(unsigned long long steam_id_lobby) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (iface) iface->ActivateGameOverlayRemotePlayTogetherInviteDialog(CSteamID(steam_id_lobby));
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -190,6 +699,53 @@ bool SteamFriends::register_protocol_in_overlay_browser(const std::string & prot
 void SteamFriends::activate_game_overlay_invite_dialog_connect_string(const std::string & connect_string) {
   ISteamFriends *iface = _get_steam_friends();
   if (iface) iface->ActivateGameOverlayInviteDialogConnectString(connect_string.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::request_equipped_profile_items
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamFriends::request_equipped_profile_items(unsigned long long steam_id, PyObject *callback) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestEquippedProfileItems(CSteamID(steam_id));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_EquippedProfileItems_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::has_equipped_profile_item
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamFriends::has_equipped_profile_item(unsigned long long steam_id, int item_type) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return false;
+  return iface->BHasEquippedProfileItem(CSteamID(steam_id), static_cast<ECommunityProfileItemType>(item_type));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_profile_item_property_string
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamFriends::get_profile_item_property_string(unsigned long long steam_id, int item_type, int prop) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return std::string();
+  const char *result = iface->GetProfileItemPropertyString(CSteamID(steam_id), static_cast<ECommunityProfileItemType>(item_type), static_cast<ECommunityProfileItemProperty>(prop));
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamFriends::get_profile_item_property_uint
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned int SteamFriends::get_profile_item_property_uint(unsigned long long steam_id, int item_type, int prop) {
+  ISteamFriends *iface = _get_steam_friends();
+  if (!iface) return 0;
+  return iface->GetProfileItemPropertyUint(CSteamID(steam_id), static_cast<ECommunityProfileItemType>(item_type), static_cast<ECommunityProfileItemProperty>(prop));
 }
 
 #endif  // CPPPARSER

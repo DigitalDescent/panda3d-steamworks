@@ -16,6 +16,9 @@ static ISteamUtils *_get_steam_utils() {
   return SteamAPI_SteamUtils();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_CheckFileSignature_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamUtils::get_seconds_since_app_active
 //       Access: Published, Static
@@ -124,6 +127,22 @@ bool SteamUtils::overlay_needs_present() {
   ISteamUtils *iface = _get_steam_utils();
   if (!iface) return false;
   return iface->BOverlayNeedsPresent();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUtils::check_file_signature
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamUtils::check_file_signature(const std::string & file_name, PyObject *callback) {
+  ISteamUtils *iface = _get_steam_utils();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->CheckFileSignature(file_name.c_str());
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_CheckFileSignature_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -245,6 +264,19 @@ bool SteamUtils::init_filter_text(unsigned int filter_options) {
   ISteamUtils *iface = _get_steam_utils();
   if (!iface) return false;
   return iface->InitFilterText(filter_options);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamUtils::filter_text
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamUtils::filter_text(int context, unsigned long long source_steam_id, const std::string & input_message) {
+  ISteamUtils *iface = _get_steam_utils();
+  if (!iface) return std::string();
+  char buf[1024];
+  int len = iface->FilterText(static_cast<ETextFilteringContext>(context), CSteamID(source_steam_id), input_message.c_str(), buf, sizeof(buf));
+  if (len > 0) return std::string(buf);
+  return std::string();
 }
 
 ////////////////////////////////////////////////////////////////////

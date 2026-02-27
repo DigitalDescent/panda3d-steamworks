@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include "steamPython.h"
 
 ////////////////////////////////////////////////////////////////////
 //       Class : SteamInventory
@@ -15,9 +16,16 @@ class EXPORT_CLASS SteamInventory {
 PUBLISHED:
   static int get_result_status(int result_handle);
   static unsigned int get_result_timestamp(int result_handle);
+  static bool check_result_steam_id(int result_handle, unsigned long long steam_id_expected);
   static void destroy_result(int result_handle);
   static void send_item_drop_heartbeat();
   static bool load_item_definitions();
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long request_eligible_promo_item_definitions_i_ds(unsigned long long steam_id, PyObject *callback);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long request_prices(PyObject *callback);
   static unsigned int get_num_items_with_prices();
 
 private:

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include "steamPython.h"
 #include <string>
 
 ////////////////////////////////////////////////////////////////////
@@ -38,9 +39,23 @@ PUBLISHED:
   static void set_game_data(const std::string & game_data);
   static void set_region(const std::string & region);
   static void set_advertise_server_active(bool active);
+  static void end_auth_session(unsigned long long steam_id);
   static void cancel_auth_ticket(unsigned int h_auth_ticket);
+  static int user_has_license_for_app(unsigned long long steam_id, unsigned int app_id);
+  static bool request_user_group_status(unsigned long long steam_id_user, unsigned long long steam_id_group);
   static void get_gameplay_stats();
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long get_server_reputation(PyObject *callback);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long associate_with_clan(unsigned long long steam_id_clan, PyObject *callback);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long compute_new_player_compatibility(unsigned long long steam_id_new_player, PyObject *callback);
   static unsigned long long create_unauthenticated_user_connection();
+  static void send_user_disconnect_deprecated(unsigned long long steam_id_user);
+  static bool update_user_data(unsigned long long steam_id_user, const std::string & player_name, unsigned int u_score);
 
 private:
   SteamGameServer() = delete;

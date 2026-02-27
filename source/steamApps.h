@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include "steamPython.h"
 #include <string>
 
 ////////////////////////////////////////////////////////////////////
@@ -43,6 +44,9 @@ PUBLISHED:
   static std::string get_launch_query_param(const std::string & key);
   static int get_app_build_id();
   static void request_all_proof_of_purchase_keys();
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long get_file_details(const std::string & file_name, PyObject *callback);
   static std::string get_launch_command_line();
   static bool is_subscribed_from_family_sharing();
   static bool set_dlc_context(unsigned int app_id);

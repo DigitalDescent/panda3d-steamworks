@@ -77,7 +77,7 @@ RETURN_TYPES = {
     "HAuthTicket":    ("unsigned int",       "0",              None),
     "RTime32":        ("unsigned int",       "0",              None),
     "AccountID_t":    ("unsigned int",       "0",              None),
-    "SteamAPICall_t": None,  # Skip async methods by default
+    "SteamAPICall_t": None,  # Handled specially by ASYNC classification
 }
 
 # ---------------------------------------------------------------------------
@@ -102,11 +102,23 @@ PARAM_TYPES = {
     "float":          ("float",               None),
     "double":         ("double",              None),
     "const char *":   ("const std::string &", "c_str"),
+    "CSteamID":       ("unsigned long long",  "steamid_from"),
     "AppId_t":        ("unsigned int",        None),
     "DepotId_t":      ("unsigned int",        None),
     "HAuthTicket":    ("unsigned int",        None),
     "RTime32":        ("unsigned int",        None),
     "AccountID_t":    ("unsigned int",        None),
+    "PublishedFileId_t": ("unsigned long long", None),
+    "UGCHandle_t":    ("unsigned long long",  None),
+    "SteamLeaderboard_t": ("unsigned long long", None),
+    "SteamLeaderboardEntries_t": ("unsigned long long", None),
+    "UGCQueryHandle_t": ("unsigned long long", None),
+    "SteamInventoryResult_t": ("int",         None),
+    "UGCUpdateHandle_t": ("unsigned long long", None),
+    "ScreenshotHandle": ("unsigned int",      None),
+    "SteamParamStringArray_t *": None,  # Skip - complex type
+    "HHTMLBrowser":   ("unsigned int",        None),
+    "PartyBeaconID_t": ("unsigned long long", None),
 }
 
 # ---------------------------------------------------------------------------
@@ -139,3 +151,80 @@ INTERFACE_OVERRIDES = {
     #     "skip_methods": ["ActivateGameOverlayInviteDialogConnectString"],
     # },
 }
+
+# =========================================================================
+# Async & Callback Configuration
+# =========================================================================
+
+# Enable async method generation (methods returning SteamAPICall_t).
+# When True, async methods accept a Python callable (PyObject *callback)
+# and invoke it with a dict when the CCallResult fires.
+ENABLE_ASYNC_METHODS = True
+
+# Enable broadcast (fire-and-forget) callback listeners.
+# When True, the generator creates a CCallback handler per broadcast
+# struct and fires Panda3D events via messenger.send().
+# Users listen with self.accept("Steam-GameOverlayActivated", handler).
+ENABLE_BROADCAST_CALLBACKS = True
+
+# Prefix prepended to broadcast event names.
+# With the default "Steam-", GameOverlayActivated_t fires as
+# "Steam-GameOverlayActivated".  Set to "" for no prefix.
+BROADCAST_EVENT_PREFIX = "Steam-"
+
+# ---------------------------------------------------------------------------
+# Callback structs to skip
+#
+# These will NOT have result data classes or handlers generated.
+# Use this for callback structs with exotic fields or that you don't need.
+# ---------------------------------------------------------------------------
+
+SKIP_CALLBACK_STRUCTS = set()
+
+# ---------------------------------------------------------------------------
+# Broadcast callbacks
+#
+# These are "fire-and-forget" callbacks that Steam dispatches without a
+# preceding API call.  They fire as Panda3D events via the messenger:
+#
+#   self.accept("Steam-GameOverlayActivated", self._on_overlay)
+#
+# The handler receives a single dict argument with the struct fields.
+# ---------------------------------------------------------------------------
+
+BROADCAST_CALLBACKS = [
+    # User / authentication
+    "SteamServersConnected_t",
+    "SteamServersDisconnected_t",
+    "SteamServerConnectFailure_t",
+    "ValidateAuthTicketResponse_t",
+    "GetAuthSessionTicketResponse_t",
+    "MicroTxnAuthorizationResponse_t",
+    "LicensesUpdated_t",
+
+    # Friends
+    "PersonaStateChange_t",
+    "GameOverlayActivated_t",
+    "GameLobbyJoinRequested_t",
+
+    # Matchmaking
+    "LobbyDataUpdate_t",
+    "LobbyChatUpdate_t",
+    "LobbyGameCreated_t",
+    "LobbyInvite_t",
+
+    # Apps
+    "DlcInstalled_t",
+    "NewUrlLaunchParameters_t",
+
+    # User stats
+    "UserStatsStored_t",
+    "UserAchievementStored_t",
+
+    # Screenshots
+    "ScreenshotRequested_t",
+    "ScreenshotReady_t",
+
+    # UGC / Workshop
+    "ItemInstalled_t",
+]

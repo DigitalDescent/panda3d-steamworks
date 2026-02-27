@@ -16,6 +16,11 @@ static ISteamGameServer *_get_steam_game_server() {
   return SteamAPI_SteamGameServer();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_AssociateWithClanResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_ComputeNewPlayerCompatibilityResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_GSReputation_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamGameServer::set_product
 //       Access: Published, Static
@@ -237,12 +242,41 @@ void SteamGameServer::set_advertise_server_active(bool active) {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamGameServer::end_auth_session
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamGameServer::end_auth_session(unsigned long long steam_id) {
+  ISteamGameServer *iface = _get_steam_game_server();
+  if (iface) iface->EndAuthSession(CSteamID(steam_id));
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamGameServer::cancel_auth_ticket
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
 void SteamGameServer::cancel_auth_ticket(unsigned int h_auth_ticket) {
   ISteamGameServer *iface = _get_steam_game_server();
   if (iface) iface->CancelAuthTicket(h_auth_ticket);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamGameServer::user_has_license_for_app
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamGameServer::user_has_license_for_app(unsigned long long steam_id, unsigned int app_id) {
+  ISteamGameServer *iface = _get_steam_game_server();
+  if (!iface) return 0;
+  return iface->UserHasLicenseForApp(CSteamID(steam_id), app_id);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamGameServer::request_user_group_status
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamGameServer::request_user_group_status(unsigned long long steam_id_user, unsigned long long steam_id_group) {
+  ISteamGameServer *iface = _get_steam_game_server();
+  if (!iface) return false;
+  return iface->RequestUserGroupStatus(CSteamID(steam_id_user), CSteamID(steam_id_group));
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -255,6 +289,54 @@ void SteamGameServer::get_gameplay_stats() {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamGameServer::get_server_reputation
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamGameServer::get_server_reputation(PyObject *callback) {
+  ISteamGameServer *iface = _get_steam_game_server();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetServerReputation();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_GSReputation_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamGameServer::associate_with_clan
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamGameServer::associate_with_clan(unsigned long long steam_id_clan, PyObject *callback) {
+  ISteamGameServer *iface = _get_steam_game_server();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->AssociateWithClan(CSteamID(steam_id_clan));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_AssociateWithClanResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamGameServer::compute_new_player_compatibility
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamGameServer::compute_new_player_compatibility(unsigned long long steam_id_new_player, PyObject *callback) {
+  ISteamGameServer *iface = _get_steam_game_server();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->ComputeNewPlayerCompatibility(CSteamID(steam_id_new_player));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_ComputeNewPlayerCompatibilityResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamGameServer::create_unauthenticated_user_connection
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -262,6 +344,25 @@ unsigned long long SteamGameServer::create_unauthenticated_user_connection() {
   ISteamGameServer *iface = _get_steam_game_server();
   if (!iface) return 0;
   return iface->CreateUnauthenticatedUserConnection().ConvertToUint64();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamGameServer::send_user_disconnect_deprecated
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamGameServer::send_user_disconnect_deprecated(unsigned long long steam_id_user) {
+  ISteamGameServer *iface = _get_steam_game_server();
+  if (iface) iface->SendUserDisconnect_DEPRECATED(CSteamID(steam_id_user));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamGameServer::update_user_data
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamGameServer::update_user_data(unsigned long long steam_id_user, const std::string & player_name, unsigned int u_score) {
+  ISteamGameServer *iface = _get_steam_game_server();
+  if (!iface) return false;
+  return iface->BUpdateUserData(CSteamID(steam_id_user), player_name.c_str(), u_score);
 }
 
 #endif  // CPPPARSER

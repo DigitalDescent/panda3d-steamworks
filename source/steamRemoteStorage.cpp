@@ -16,6 +16,37 @@ static ISteamRemoteStorage *_get_steam_remote_storage() {
   return SteamAPI_SteamRemoteStorage();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_RemoteStorageDeletePublishedFileResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageDownloadUGCResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageEnumeratePublishedFilesByUserActionResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageEnumerateUserPublishedFilesResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageEnumerateUserSubscribedFilesResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageFileReadAsyncComplete_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageFileShareResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageGetPublishedFileDetailsResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageGetPublishedItemVoteDetailsResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageSetUserPublishedFileActionResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageSubscribePublishedFileResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageUnsubscribePublishedFileResult_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_RemoteStorageUpdateUserPublishedItemVoteResult_t(SteamAPICall_t, PyObject *);
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::file_read_async
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::file_read_async(const std::string & file, unsigned int offset, unsigned int to_read, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->FileReadAsync(file.c_str(), offset, to_read);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageFileReadAsyncComplete_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamRemoteStorage::file_forget
 //       Access: Published, Static
@@ -34,6 +65,22 @@ bool SteamRemoteStorage::file_delete(const std::string & file) {
   ISteamRemoteStorage *iface = _get_steam_remote_storage();
   if (!iface) return false;
   return iface->FileDelete(file.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::file_share
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::file_share(const std::string & file, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->FileShare(file.c_str());
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageFileShareResult_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -136,6 +183,22 @@ void SteamRemoteStorage::set_cloud_enabled_for_app(bool enabled) {
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::ugc_download
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::ugc_download(unsigned long long h_content, unsigned int priority, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->UGCDownload(h_content, priority);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageDownloadUGCResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamRemoteStorage::get_cached_ugc_count
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -143,6 +206,198 @@ int SteamRemoteStorage::get_cached_ugc_count() {
   ISteamRemoteStorage *iface = _get_steam_remote_storage();
   if (!iface) return 0;
   return iface->GetCachedUGCCount();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::get_published_file_details
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::get_published_file_details(unsigned long long published_file_id, unsigned int max_seconds_old, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetPublishedFileDetails(published_file_id, max_seconds_old);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageGetPublishedFileDetailsResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::delete_published_file
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::delete_published_file(unsigned long long published_file_id, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->DeletePublishedFile(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageDeletePublishedFileResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::enumerate_user_published_files
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::enumerate_user_published_files(unsigned int start_index, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->EnumerateUserPublishedFiles(start_index);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageEnumerateUserPublishedFilesResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::subscribe_published_file
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::subscribe_published_file(unsigned long long published_file_id, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->SubscribePublishedFile(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageSubscribePublishedFileResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::enumerate_user_subscribed_files
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::enumerate_user_subscribed_files(unsigned int start_index, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->EnumerateUserSubscribedFiles(start_index);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageEnumerateUserSubscribedFilesResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::unsubscribe_published_file
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::unsubscribe_published_file(unsigned long long published_file_id, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->UnsubscribePublishedFile(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageUnsubscribePublishedFileResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::get_published_item_vote_details
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::get_published_item_vote_details(unsigned long long published_file_id, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetPublishedItemVoteDetails(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageGetPublishedItemVoteDetailsResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::update_user_published_item_vote
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::update_user_published_item_vote(unsigned long long published_file_id, bool vote_up, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->UpdateUserPublishedItemVote(published_file_id, vote_up);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageUpdateUserPublishedItemVoteResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::get_user_published_item_vote_details
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::get_user_published_item_vote_details(unsigned long long published_file_id, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->GetUserPublishedItemVoteDetails(published_file_id);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageGetPublishedItemVoteDetailsResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::set_user_published_file_action
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::set_user_published_file_action(unsigned long long published_file_id, int action, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->SetUserPublishedFileAction(published_file_id, static_cast<EWorkshopFileAction>(action));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageSetUserPublishedFileActionResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::enumerate_published_files_by_user_action
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::enumerate_published_files_by_user_action(int action, unsigned int start_index, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->EnumeratePublishedFilesByUserAction(static_cast<EWorkshopFileAction>(action), start_index);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageEnumeratePublishedFilesByUserActionResult_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamRemoteStorage::ugc_download_to_location
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamRemoteStorage::ugc_download_to_location(unsigned long long h_content, const std::string & location, unsigned int priority, PyObject *callback) {
+  ISteamRemoteStorage *iface = _get_steam_remote_storage();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->UGCDownloadToLocation(h_content, location.c_str(), priority);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_RemoteStorageDownloadUGCResult_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////

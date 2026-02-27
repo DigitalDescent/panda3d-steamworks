@@ -6,6 +6,7 @@
 #pragma once
 
 #include "pandabase.h"
+#include "steamPython.h"
 #include <string>
 
 ////////////////////////////////////////////////////////////////////
@@ -25,7 +26,35 @@ PUBLISHED:
   static bool indicate_achievement_progress(const std::string & name, unsigned int cur_progress, unsigned int max_progress);
   static unsigned int get_num_achievements();
   static std::string get_achievement_name(unsigned int achievement);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long request_user_stats(unsigned long long steam_id_user, PyObject *callback);
   static bool reset_all_stats(bool achievements_too);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long find_or_create_leaderboard(const std::string & leaderboard_name, int leaderboard_sort_method, int leaderboard_display_type, PyObject *callback);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long find_leaderboard(const std::string & leaderboard_name, PyObject *callback);
+  static std::string get_leaderboard_name(unsigned long long h_steam_leaderboard);
+  static int get_leaderboard_entry_count(unsigned long long h_steam_leaderboard);
+  static int get_leaderboard_sort_method(unsigned long long h_steam_leaderboard);
+  static int get_leaderboard_display_type(unsigned long long h_steam_leaderboard);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long download_leaderboard_entries(unsigned long long h_steam_leaderboard, int leaderboard_data_request, int range_start, int range_end, PyObject *callback);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long attach_leaderboard_ugc(unsigned long long h_steam_leaderboard, unsigned long long h_ugc, PyObject *callback);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long get_number_of_current_players(PyObject *callback);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long request_global_achievement_percentages(PyObject *callback);
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+  static unsigned long long request_global_stats(int history_days, PyObject *callback);
 
 private:
   SteamUserStats() = delete;

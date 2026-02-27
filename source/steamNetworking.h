@@ -13,6 +13,9 @@
 ////////////////////////////////////////////////////////////////////
 class EXPORT_CLASS SteamNetworking {
 PUBLISHED:
+  static bool accept_p2_p_session_with_user(unsigned long long steam_id_remote);
+  static bool close_p2_p_session_with_user(unsigned long long steam_id_remote);
+  static bool close_p2_p_channel_with_user(unsigned long long steam_id_remote, int channel);
   static bool allow_p2_p_packet_relay(bool allow);
 
 private:

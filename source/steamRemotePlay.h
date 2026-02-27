@@ -15,6 +15,7 @@ class EXPORT_CLASS SteamRemotePlay {
 PUBLISHED:
   static unsigned int get_session_count();
   static bool show_remote_play_together_ui();
+  static bool send_remote_play_together_invite(unsigned long long steam_id_friend);
   static bool enable_remote_play_together_direct_input();
   static void disable_remote_play_together_direct_input();
 

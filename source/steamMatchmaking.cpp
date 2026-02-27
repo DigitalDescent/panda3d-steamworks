@@ -16,6 +16,11 @@ static ISteamMatchmaking *_get_steam_matchmaking() {
   return SteamAPI_SteamMatchmaking();
 }
 
+// Forward declarations for async call-result registration
+extern void _steam_async_call_LobbyCreated_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_LobbyEnter_t(SteamAPICall_t, PyObject *);
+extern void _steam_async_call_LobbyMatchList_t(SteamAPICall_t, PyObject *);
+
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamMatchmaking::get_favorite_game_count
 //       Access: Published, Static
@@ -44,6 +49,22 @@ bool SteamMatchmaking::remove_favorite_game(unsigned int app_id, unsigned int ip
   ISteamMatchmaking *iface = _get_steam_matchmaking();
   if (!iface) return false;
   return iface->RemoveFavoriteGame(app_id, ip, conn_port, query_port, flags);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::request_lobby_list
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamMatchmaking::request_lobby_list(PyObject *callback) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->RequestLobbyList();
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_LobbyMatchList_t(call, callback);
+  }
+  return (unsigned long long)call;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -101,6 +122,15 @@ void SteamMatchmaking::add_request_lobby_list_result_count_filter(int max_result
 }
 
 ////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::add_request_lobby_list_compatible_members_filter
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamMatchmaking::add_request_lobby_list_compatible_members_filter(unsigned long long steam_id_lobby) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (iface) iface->AddRequestLobbyListCompatibleMembersFilter(CSteamID(steam_id_lobby));
+}
+
+////////////////////////////////////////////////////////////////////
 //     Function: SteamMatchmaking::get_lobby_by_index
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
@@ -108,6 +138,240 @@ unsigned long long SteamMatchmaking::get_lobby_by_index(int lobby) {
   ISteamMatchmaking *iface = _get_steam_matchmaking();
   if (!iface) return 0;
   return iface->GetLobbyByIndex(lobby).ConvertToUint64();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::create_lobby
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamMatchmaking::create_lobby(int lobby_type, int max_members, PyObject *callback) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->CreateLobby(static_cast<ELobbyType>(lobby_type), max_members);
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_LobbyCreated_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::join_lobby
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamMatchmaking::join_lobby(unsigned long long steam_id_lobby, PyObject *callback) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->JoinLobby(CSteamID(steam_id_lobby));
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_LobbyEnter_t(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::leave_lobby
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamMatchmaking::leave_lobby(unsigned long long steam_id_lobby) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (iface) iface->LeaveLobby(CSteamID(steam_id_lobby));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::invite_user_to_lobby
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::invite_user_to_lobby(unsigned long long steam_id_lobby, unsigned long long steam_id_invitee) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->InviteUserToLobby(CSteamID(steam_id_lobby), CSteamID(steam_id_invitee));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::get_num_lobby_members
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamMatchmaking::get_num_lobby_members(unsigned long long steam_id_lobby) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return 0;
+  return iface->GetNumLobbyMembers(CSteamID(steam_id_lobby));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::get_lobby_member_by_index
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamMatchmaking::get_lobby_member_by_index(unsigned long long steam_id_lobby, int member) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return 0;
+  return iface->GetLobbyMemberByIndex(CSteamID(steam_id_lobby), member).ConvertToUint64();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::get_lobby_data
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamMatchmaking::get_lobby_data(unsigned long long steam_id_lobby, const std::string & key) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return std::string();
+  const char *result = iface->GetLobbyData(CSteamID(steam_id_lobby), key.c_str());
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::set_lobby_data
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::set_lobby_data(unsigned long long steam_id_lobby, const std::string & key, const std::string & value) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->SetLobbyData(CSteamID(steam_id_lobby), key.c_str(), value.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::get_lobby_data_count
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamMatchmaking::get_lobby_data_count(unsigned long long steam_id_lobby) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return 0;
+  return iface->GetLobbyDataCount(CSteamID(steam_id_lobby));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::get_lobby_data_by_index
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamMatchmaking::get_lobby_data_by_index(unsigned long long steam_id_lobby, int lobby_data) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return std::string();
+  char buf[1024];
+  bool ok = iface->GetLobbyDataByIndex(CSteamID(steam_id_lobby), lobby_data, buf, sizeof(buf), buf, sizeof(buf));
+  if (ok) return std::string(buf);
+  return std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::delete_lobby_data
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::delete_lobby_data(unsigned long long steam_id_lobby, const std::string & key) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->DeleteLobbyData(CSteamID(steam_id_lobby), key.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::get_lobby_member_data
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string SteamMatchmaking::get_lobby_member_data(unsigned long long steam_id_lobby, unsigned long long steam_id_user, const std::string & key) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return std::string();
+  const char *result = iface->GetLobbyMemberData(CSteamID(steam_id_lobby), CSteamID(steam_id_user), key.c_str());
+  return result ? std::string(result) : std::string();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::set_lobby_member_data
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamMatchmaking::set_lobby_member_data(unsigned long long steam_id_lobby, const std::string & key, const std::string & value) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (iface) iface->SetLobbyMemberData(CSteamID(steam_id_lobby), key.c_str(), value.c_str());
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::request_lobby_data
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::request_lobby_data(unsigned long long steam_id_lobby) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->RequestLobbyData(CSteamID(steam_id_lobby));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::set_lobby_game_server
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void SteamMatchmaking::set_lobby_game_server(unsigned long long steam_id_lobby, unsigned int game_server_ip, unsigned short game_server_port, unsigned long long steam_id_game_server) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (iface) iface->SetLobbyGameServer(CSteamID(steam_id_lobby), game_server_ip, game_server_port, CSteamID(steam_id_game_server));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::set_lobby_member_limit
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::set_lobby_member_limit(unsigned long long steam_id_lobby, int max_members) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->SetLobbyMemberLimit(CSteamID(steam_id_lobby), max_members);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::get_lobby_member_limit
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+int SteamMatchmaking::get_lobby_member_limit(unsigned long long steam_id_lobby) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return 0;
+  return iface->GetLobbyMemberLimit(CSteamID(steam_id_lobby));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::set_lobby_type
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::set_lobby_type(unsigned long long steam_id_lobby, int lobby_type) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->SetLobbyType(CSteamID(steam_id_lobby), static_cast<ELobbyType>(lobby_type));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::set_lobby_joinable
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::set_lobby_joinable(unsigned long long steam_id_lobby, bool lobby_joinable) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->SetLobbyJoinable(CSteamID(steam_id_lobby), lobby_joinable);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::get_lobby_owner
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned long long SteamMatchmaking::get_lobby_owner(unsigned long long steam_id_lobby) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return 0;
+  return iface->GetLobbyOwner(CSteamID(steam_id_lobby)).ConvertToUint64();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::set_lobby_owner
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::set_lobby_owner(unsigned long long steam_id_lobby, unsigned long long steam_id_new_owner) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->SetLobbyOwner(CSteamID(steam_id_lobby), CSteamID(steam_id_new_owner));
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamMatchmaking::set_linked_lobby
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+bool SteamMatchmaking::set_linked_lobby(unsigned long long steam_id_lobby, unsigned long long steam_id_lobby_dependent) {
+  ISteamMatchmaking *iface = _get_steam_matchmaking();
+  if (!iface) return false;
+  return iface->SetLinkedLobby(CSteamID(steam_id_lobby), CSteamID(steam_id_lobby_dependent));
 }
 
 #endif  // CPPPARSER
