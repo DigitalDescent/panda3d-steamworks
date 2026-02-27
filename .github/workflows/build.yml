@@ -1,3 +1,13 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# CI / CD – Build Panda3D from source (cached), compile steamworks wheels,
+# and publish to PyPI on tagged releases.
+#
+# Inspired by the panda3d-cmu CI workflow.  Each (os × python-version) job
+# builds a minimal Panda3D SDK from source, caches it, then compiles the
+# panda3d-steamworks wheel against that SDK.
+#
+# Adjust PANDA3D_REF and the python-version list in the matrix to taste.
+# ──────────────────────────────────────────────────────────────────────────────
 name: Build and Publish
 
 on:
@@ -7,104 +17,217 @@ on:
   pull_request:
     branches: [master, main]
   workflow_dispatch:
+    inputs:
+      panda3d_ref:
+        description: "Panda3D git ref (branch / tag / SHA)"
+        default: "release/1.10.x"
+        type: string
 
-# ── Panda3D SDK configuration ──────────────────────────────
-# Building native C++ modules requires the full Panda3D SDK
-# (pip-installed panda3d does NOT ship .lib files or headers).
-# The SDK bundles its own Python, which we use for every step.
 env:
-  P3D_VERSION: "1.10.15"
-  # winget installs to C:\Panda3D-<ver>-x64 by default
-  P3D_DIR: "C:\\Panda3D-1.10.15-x64"
+  # Panda3D source to build against.  Override via workflow_dispatch input.
+  PANDA3D_REF: ${{ inputs.panda3d_ref || 'release/1.10.x' }}
+  # Panda3D thirdparty tools version (for Windows & macOS native deps).
+  P3D_TOOLS_VER: "1.10.16"
 
 permissions:
   contents: read
 
+# ══════════════════════════════════════════════════════════════════════════════
 jobs:
-  # ================================================================
-  # Windows build
-  # ================================================================
-  build-windows:
-    name: Windows Build
-    runs-on: windows-latest
+  # ────────────────────────────────────────────────────────────────────────────
+  # Build wheels  –  one job per (platform × Python version)
+  # ────────────────────────────────────────────────────────────────────────────
+  build:
+    name: "${{ matrix.os }} / py${{ matrix.python-version }}"
+    if: >-
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[ci skip]')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-24.04, macOS-15]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # Python 3.8 has no official ARM64 macOS build.
+          - os: macOS-15
+            python-version: "3.8"
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+    # ── 1. Checkout steamworks repo (with Steamworks SDK submodule) ────────
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-      - name: Install Panda3D SDK
-        shell: pwsh
-        run: |
-          Write-Host "Installing Panda3D SDK ${{ env.P3D_VERSION }} via winget ..."
-          winget install --id Panda3D.Panda3D --version ${{ env.P3D_VERSION }} `
-            --accept-source-agreements --accept-package-agreements --silent
-          # Verify the SDK landed
-          if (-not (Test-Path "${{ env.P3D_DIR }}\python\python.exe")) {
-            Write-Error "SDK Python not found at ${{ env.P3D_DIR }}\python\python.exe"
-            # Show what was actually installed for debugging
-            Get-ChildItem "C:\Panda3D*" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
-            exit 1
+    # ── 2. Python ──────────────────────────────────────────────────────────
+    - name: Setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    # ── 3. Platform build tools (always needed — we compile C++ either way) ─
+    - name: Install build tools (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential cmake bison flex \
+          libeigen3-dev libfreetype6-dev libjpeg-dev libpng-dev \
+          libssl-dev libvorbis-dev zlib1g-dev \
+          libgl1-mesa-dev libegl1-mesa-dev libx11-dev libxrandr-dev
+
+    - name: Install build tools (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake eigen
+        sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+
+    # ── 4. Caches ──────────────────────────────────────────────────────────
+    #   • Panda3D build  → per (os, python-version, ref)
+    #   • Panda3D thirdparty (Windows) → shared across Python versions
+    - name: Cache Panda3D build
+      id: cache-panda3d
+      uses: actions/cache@v5
+      with:
+        path: panda3d-src/built
+        key: panda3d-built-${{ runner.os }}-py${{ matrix.python-version }}-${{ env.PANDA3D_REF }}-v1
+
+    - name: Cache Panda3D thirdparty (Windows)
+      if: runner.os == 'Windows'
+      id: cache-thirdparty-win
+      uses: actions/cache@v5
+      with:
+        path: panda3d-src/thirdparty
+        key: panda3d-thirdparty-windows-${{ env.P3D_TOOLS_VER }}-v1
+
+    # ── 5. Clone Panda3D source (only when build not cached) ───────────────
+    - name: Clone Panda3D
+      if: steps.cache-panda3d.outputs.cache-hit != 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: panda3d/panda3d
+        ref: ${{ env.PANDA3D_REF }}
+        path: panda3d-src
+        fetch-depth: 1
+
+    # ── 6. Platform thirdparty downloads ───────────────────────────────────
+    - name: Download Panda3D thirdparty (Windows)
+      if: >-
+        runner.os == 'Windows' &&
+        steps.cache-thirdparty-win.outputs.cache-hit != 'true'
+      shell: powershell
+      run: |
+        if (!(Test-Path "panda3d-src\thirdparty\win-libs-vc14-x64")) {
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest `
+            -Uri "https://www.panda3d.org/download/panda3d-${{ env.P3D_TOOLS_VER }}/panda3d-${{ env.P3D_TOOLS_VER }}-tools-win64.zip" `
+            -OutFile thirdparty.zip
+          Expand-Archive -Path thirdparty.zip -DestinationPath thirdparty-extract
+          New-Item -ItemType Directory -Force -Path panda3d-src | Out-Null
+          if (Test-Path "panda3d-src\thirdparty") {
+            Remove-Item -Recurse -Force "panda3d-src\thirdparty"
           }
-          Write-Host "SDK installed successfully at ${{ env.P3D_DIR }}"
+          Move-Item "thirdparty-extract\panda3d-${{ env.P3D_TOOLS_VER }}\thirdparty" "panda3d-src\"
+        }
 
-      - name: Install interrogate tools
-        shell: pwsh
-        run: |
-          & "${{ env.P3D_DIR }}\python\python.exe" -m pip install --upgrade pip setuptools wheel
-          & "${{ env.P3D_DIR }}\python\python.exe" -m pip install panda3d-interrogate
+    - name: Download Panda3D thirdparty (macOS)
+      if: >-
+        runner.os == 'macOS' &&
+        steps.cache-panda3d.outputs.cache-hit != 'true'
+      run: |
+        curl -sLO "https://www.panda3d.org/download/panda3d-${{ env.P3D_TOOLS_VER }}/panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
+        tar -xf "panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
+        mv "panda3d-${{ env.P3D_TOOLS_VER }}/thirdparty" panda3d-src/thirdparty
+        # Fix Cg dylib id so pzip can run during the build.
+        install_name_tool -id \
+          "$(pwd)/panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib" \
+          panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib 2>/dev/null || true
 
-      - name: Verify Panda3D SDK
-        shell: pwsh
-        run: |
-          $py = "${{ env.P3D_DIR }}\python\python.exe"
-          & $py -c "import panda3d.core; print('Panda3D', panda3d.core.PandaSystem.get_version_string())"
-          & $py -c "import sys; print('Python', sys.version)"
-          & $py -c "import shutil; print('interrogate:', shutil.which('interrogate'))"
-          Write-Host "SDK root contents:"
-          Get-ChildItem "${{ env.P3D_DIR }}" -Name
+    # ── 7. Build Panda3D from source ───────────────────────────────────────
+    - name: Build Panda3D
+      if: steps.cache-panda3d.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cd panda3d-src
+        python makepanda/makepanda.py \
+          --outputdir built \
+          --everything --no-eigen \
+          --python-incdir="$pythonLocation/include" \
+          --python-libdir="$pythonLocation/lib" \
+          --verbose --threads=4 \
+          ${{ runner.os == 'Windows' && '--windows-sdk=10 --msvc-version=14.3' || '' }}
 
-      - name: Build wheel
-        shell: pwsh
-        run: |
-          $py = "${{ env.P3D_DIR }}\python\python.exe"
-          & $py -m pip install build
-          & $py -m build --wheel --no-isolation
+    # ── 8. Prepare SDK environment for steamworks build ────────────────────
+    - name: Add Panda3D to PATH
+      shell: bash
+      run: |
+        # bin/ has interrogate + runtime DLLs (Windows)
+        echo "$GITHUB_WORKSPACE/panda3d-src/built/bin" >> "$GITHUB_PATH"
 
-      - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel-windows
-          path: dist/*.whl
-          if-no-files-found: error
+    - name: Create thirdparty compatibility symlink (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        # setup.py resolves thirdparty by MSVC suffix.  The downloaded
+        # thirdparty is named win-libs-vc14-x64; create a plain win-libs
+        # junction so the path search in get_win_thirdparty_dir() succeeds.
+        $target = "panda3d-src\thirdparty\win-libs-vc14-x64"
+        $link   = "panda3d-src\thirdparty\win-libs"
+        if ((Test-Path $target) -and !(Test-Path $link)) {
+          New-Item -ItemType Junction -Path $link `
+                   -Target (Resolve-Path $target).Path | Out-Null
+        }
 
-  # ================================================================
-  # Publish to PyPI (only on tagged releases)
-  # ================================================================
+    # ── 9. Build the panda3d-steamworks wheel ──────────────────────────────
+    - name: Install Python build tools
+      run: pip install build setuptools wheel
+
+    - name: Build wheel
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.workspace }}/panda3d-src/built
+        LD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
+        DYLD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
+      run: python -m build --wheel --no-isolation
+
+    # ── 10. Upload ─────────────────────────────────────────────────────────
+    - name: Upload wheel artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: dist/*.whl
+        if-no-files-found: error
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Publish to PyPI (tagged releases only)
+  # ────────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish to PyPI
-    needs: build-windows
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
     permissions:
-      id-token: write  # required for trusted publishing
+      id-token: write          # required for trusted publishing
 
     environment:
       name: pypi
       url: https://pypi.org/p/panda3d-steamworks
 
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
+    - name: Download all wheel artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        pattern: wheel-*
+        merge-multiple: true
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dist/
 
 
