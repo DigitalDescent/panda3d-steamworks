@@ -1,5 +1,5 @@
 """
-setup.py – PyPI-publishable build for panda3d-steamworks.
+setup.py - PyPI-publishable build for panda3d-steamworks.
 
 This file provides a custom ``build_ext`` command that:
 
@@ -28,7 +28,7 @@ from setuptools.command.build_ext import build_ext as _build_ext
 import panda3d.core  # noqa: E402
 
 # ---------------------------------------------------------------------------
-# Build configuration – edit these instead of a config file
+# Build configuration - edit these instead of a config file
 # ---------------------------------------------------------------------------
 MODULE_NAME = "panda3d_steamworks"
 GENERATE_PDB = True          # Emit .pdb debug symbols (Windows only)
@@ -137,7 +137,7 @@ def _handle_cmake_error(output):
     print_error("\n" + "-" * 60)
     print_error("\nCMake Error:")
     if "Re-run cmake with a different source directory." in output:
-        print_error("The project folder was moved – delete the build dir and retry.")
+        print_error("The project folder was moved - delete the build dir and retry.")
     elif "No CMAKE_CXX_COMPILER could be found." in output or \
          "No CMAKE_C_COMPILER could be found." in output:
         print_error("Could not find the required compiler!")
@@ -252,11 +252,11 @@ def _run_cmake_build(config):
 
 
 # ---------------------------------------------------------------------------
-# Dummy Extension – just so setuptools knows there is a native component
+# Dummy Extension - just so setuptools knows there is a native component
 # ---------------------------------------------------------------------------
 
 class CMakeExtension(Extension):
-    """Sentinel extension – no *real* sources; CMake does the heavy lifting."""
+    """Sentinel extension - no *real* sources; CMake does the heavy lifting."""
 
     def __init__(self, name):
         super().__init__(name, sources=[])

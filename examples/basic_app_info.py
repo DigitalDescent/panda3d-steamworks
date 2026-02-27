@@ -9,7 +9,7 @@ from panda3d_steamworks import SteamApps
 
 def main():
     if not SteamApps.init():
-        print("Steam failed to initialise – is Steam running and steam_appid.txt present?")
+        print("Steam failed to initialise - is Steam running and steam_appid.txt present?")
         return
 
     print("Steam initialised successfully!")

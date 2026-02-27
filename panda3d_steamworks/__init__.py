@@ -33,7 +33,7 @@ if sys.platform == "win32":
         except Exception:
             pass
     else:
-        # Older Python – prepend to PATH
+        # Older Python - prepend to PATH
         os.environ["PATH"] = _pkg_dir + os.pathsep + os.environ.get("PATH", "")
 elif sys.platform == "darwin":
     # macOS: ensure DYLD_LIBRARY_PATH includes the package directory

@@ -71,7 +71,7 @@ def main():
             pass  # get_file_name_and_size not yet wrapped
 
     # ------------------------------------------------------------------
-    # Delete the test file (optional – uncomment to clean up)
+    # Delete the test file (optional - uncomment to clean up)
     # ------------------------------------------------------------------
     # SteamRemoteStorage.file_delete(CLOUD_FILE)
 
