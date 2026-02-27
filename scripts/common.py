@@ -68,6 +68,13 @@ MSVC_VERSIONS = [
     MSVCVersion(1940, "Visual Studio 17 2022", "vc143"),
     MSVCVersion(1941, "Visual Studio 17 2022", "vc143"),
     MSVCVersion(1942, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1943, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1944, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1945, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1946, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1947, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1948, "Visual Studio 17 2022", "vc143"),
+    MSVCVersion(1949, "Visual Studio 17 2022", "vc143"),
 
     MSVCVersion(1950, "Visual Studio 18 2026", "vc144"),
     MSVCVersion(1951, "Visual Studio 18 2026", "vc144"),
