@@ -429,7 +429,12 @@ target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES} ${PANDA_LIBRARIES} ${L
 if(WIN32)
 #   # Eventually link core.pyd?
 else()
-  set(CMAKE_MODULE_LINKER_FLAGS ${PANDA_CORE_PATH})
+  if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    # macOS uses SHARED libraries, so set SHARED linker flags
+    set(CMAKE_SHARED_LINKER_FLAGS ${PANDA_CORE_PATH})
+  else()
+    set(CMAKE_MODULE_LINKER_FLAGS ${PANDA_CORE_PATH})
+  endif()
 endif()
 
 # After building, copy the file to the current directory

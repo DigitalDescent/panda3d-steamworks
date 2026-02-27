@@ -183,7 +183,7 @@ jobs:
 
     # ── 9. Build the panda3d-steamworks wheel ──────────────────────────────
     - name: Install Python build tools
-      run: pip install build setuptools wheel
+      run: pip install build "setuptools>=64" wheel
 
     - name: Build wheel
       shell: bash
