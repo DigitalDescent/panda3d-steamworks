@@ -184,8 +184,17 @@ def _run_cmake(config):
     # Interrogate library detection
     if PandaSystem.get_major_version() > 1 or PandaSystem.get_minor_version() > 9:
         interrogatedb_lib = lib_prefix + "p3interrogatedb"
-        ext = ".lib" if is_windows() else ".so"
-        if os.path.isfile(join_abs(get_panda_lib_path(), interrogatedb_lib + ext)):
+        # Determine the actual library filename on disk for the existence check.
+        # On Windows: libp3interrogatedb.lib   (lib_prefix="lib", ext=".lib")
+        # On macOS:   libp3interrogatedb.dylib  (file prefix="lib", ext=".dylib")
+        # On Linux:   libp3interrogatedb.so     (file prefix="lib", ext=".so")
+        if is_windows():
+            check_filename = interrogatedb_lib + ".lib"
+        elif is_macos():
+            check_filename = "libp3interrogatedb.dylib"
+        else:
+            check_filename = "libp3interrogatedb.so"
+        if os.path.isfile(join_abs(get_panda_lib_path(), check_filename)):
             cmake_args.append("-DINTERROGATE_LIB:STRING=" + interrogatedb_lib)
         else:
             cmake_args.append("-DINTERROGATE_LIB:STRING=" + lib_prefix + "panda")
@@ -207,7 +216,7 @@ def _run_cmake(config):
     pyver_dot = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
     if is_windows():
         cmake_args.append("-DPYTHONVER:STRING=" + pyver)
-    if is_linux() or is_freebsd():
+    if is_linux() or is_freebsd() or is_macos():
         cmake_args.append("-DPYTHONVERDOT:STRING=" + pyver_dot)
 
     # Thirdparty directory
