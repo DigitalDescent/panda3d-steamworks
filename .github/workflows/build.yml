@@ -47,11 +47,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2022, ubuntu-24.04, macOS-15]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-        exclude:
-          # Python 3.8 has no official ARM64 macOS build.
-          - os: macOS-15
-            python-version: "3.8"
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     runs-on: ${{ matrix.os }}
 
@@ -167,19 +163,33 @@ jobs:
         # bin/ has interrogate + runtime DLLs (Windows)
         echo "$GITHUB_WORKSPACE/panda3d-src/built/bin" >> "$GITHUB_PATH"
 
-    - name: Create thirdparty compatibility symlink (Windows)
+    - name: Create thirdparty compatibility junctions (Windows)
       if: runner.os == 'Windows'
       shell: powershell
       run: |
-        # setup.py resolves thirdparty by MSVC suffix.  The downloaded
-        # thirdparty is named win-libs-vc14-x64; create a plain win-libs
-        # junction so the path search in get_win_thirdparty_dir() succeeds.
-        $target = "panda3d-src\thirdparty\win-libs-vc14-x64"
-        $link   = "panda3d-src\thirdparty\win-libs"
-        if ((Test-Path $target) -and !(Test-Path $link)) {
-          New-Item -ItemType Junction -Path $link `
-                   -Target (Resolve-Path $target).Path | Out-Null
+        # get_win_thirdparty_dir() searches for "thirdparty/win-libs" relative
+        # to the SDK path (panda3d-src/built/).  The actual thirdparty folder
+        # is panda3d-src/thirdparty/win-libs-vc14-x64.
+        # Create one direct junction at the exact searched path.
+        $realTP = (Resolve-Path "panda3d-src\thirdparty\win-libs-vc14-x64").Path
+        $builtTPDir = "panda3d-src\built\thirdparty"
+        $link = "$builtTPDir\win-libs"
+
+        # Ensure the built/thirdparty directory exists (as a real dir, not a junction)
+        if (Test-Path $builtTPDir) {
+          # If it's a junction from a previous run, remove it first
+          $item = Get-Item $builtTPDir -Force
+          if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            $item.Delete()
+          }
         }
+        New-Item -ItemType Directory -Force -Path $builtTPDir | Out-Null
+
+        # Create the single junction: built/thirdparty/win-libs → real thirdparty dir
+        if (!(Test-Path $link)) {
+          New-Item -ItemType Junction -Path $link -Target $realTP | Out-Null
+        }
+        Write-Host "Junction: $link -> $realTP"
 
     # ── 9. Build the panda3d-steamworks wheel ──────────────────────────────
     - name: Install Python build tools
