@@ -2,11 +2,9 @@
 # CI / CD – Build Panda3D from source (cached), compile steamworks wheels,
 # and publish to PyPI on tagged releases.
 #
-# Inspired by the panda3d-cmu CI workflow.  Each (os × python-version) job
+# Inspired by the panda3d CI workflow.  Each (os × python-version) job
 # builds a minimal Panda3D SDK from source, caches it, then compiles the
 # panda3d-steamworks wheel against that SDK.
-#
-# Adjust PANDA3D_REF and the python-version list in the matrix to taste.
 # ──────────────────────────────────────────────────────────────────────────────
 name: Build and Publish
 
@@ -30,7 +28,7 @@ env:
   P3D_TOOLS_VER: "1.10.16"
 
 permissions:
-  contents: read
+  contents: write
 
 # ══════════════════════════════════════════════════════════════════════════════
 jobs:
@@ -47,11 +45,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2022, ubuntu-24.04, macOS-15]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-        exclude:
-          # Python 3.8 has no official ARM64 macOS build.
-          - os: macOS-15
-            python-version: "3.8"
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     runs-on: ${{ matrix.os }}
 
@@ -167,23 +161,37 @@ jobs:
         # bin/ has interrogate + runtime DLLs (Windows)
         echo "$GITHUB_WORKSPACE/panda3d-src/built/bin" >> "$GITHUB_PATH"
 
-    - name: Create thirdparty compatibility symlink (Windows)
+    - name: Create thirdparty compatibility junctions (Windows)
       if: runner.os == 'Windows'
       shell: powershell
       run: |
-        # setup.py resolves thirdparty by MSVC suffix.  The downloaded
-        # thirdparty is named win-libs-vc14-x64; create a plain win-libs
-        # junction so the path search in get_win_thirdparty_dir() succeeds.
-        $target = "panda3d-src\thirdparty\win-libs-vc14-x64"
-        $link   = "panda3d-src\thirdparty\win-libs"
-        if ((Test-Path $target) -and !(Test-Path $link)) {
-          New-Item -ItemType Junction -Path $link `
-                   -Target (Resolve-Path $target).Path | Out-Null
+        # get_win_thirdparty_dir() searches for "thirdparty/win-libs" relative
+        # to the SDK path (panda3d-src/built/).  The actual thirdparty folder
+        # is panda3d-src/thirdparty/win-libs-vc14-x64.
+        # Create one direct junction at the exact searched path.
+        $realTP = (Resolve-Path "panda3d-src\thirdparty\win-libs-vc14-x64").Path
+        $builtTPDir = "panda3d-src\built\thirdparty"
+        $link = "$builtTPDir\win-libs"
+
+        # Ensure the built/thirdparty directory exists (as a real dir, not a junction)
+        if (Test-Path $builtTPDir) {
+          # If it's a junction from a previous run, remove it first
+          $item = Get-Item $builtTPDir -Force
+          if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            $item.Delete()
+          }
         }
+        New-Item -ItemType Directory -Force -Path $builtTPDir | Out-Null
+
+        # Create the single junction: built/thirdparty/win-libs → real thirdparty dir
+        if (!(Test-Path $link)) {
+          New-Item -ItemType Junction -Path $link -Target $realTP | Out-Null
+        }
+        Write-Host "Junction: $link -> $realTP"
 
     # ── 9. Build the panda3d-steamworks wheel ──────────────────────────────
     - name: Install Python build tools
-      run: pip install build setuptools wheel
+      run: pip install build "setuptools>=64" wheel
 
     - name: Build wheel
       shell: bash
@@ -200,6 +208,69 @@ jobs:
         name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
         path: dist/*.whl
         if-no-files-found: error
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Verify generated code & docs are up to date (lightweight, no build needed)
+  # ────────────────────────────────────────────────────────────────────────────
+  codegen-check:
+    name: "Codegen freshness check"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Check generated docs are up to date
+      run: python scripts/codegen_docs.py --check
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Deploy documentation to GitHub Pages (main/master pushes only)
+  # ────────────────────────────────────────────────────────────────────────────
+  docs:
+    name: Deploy docs to GitHub Pages
+    needs: codegen-check
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    permissions:
+      pages: write
+      id-token: write
+
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v5
+
+    - name: Build with Jekyll
+      uses: actions/jekyll-build-pages@v1
+      with:
+        source: ./docs
+        destination: ./_site
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./_site
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
 
   # ────────────────────────────────────────────────────────────────────────────
   # Publish to PyPI (tagged releases only)
@@ -230,4 +301,31 @@ jobs:
       with:
         packages-dir: dist/
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # GitHub Release (tagged releases only)
+  # ────────────────────────────────────────────────────────────────────────────
+  github-release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write          # required to create releases
+
+    steps:
+    - name: Download all wheel artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        pattern: wheel-*
+        merge-multiple: true
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: ${{ github.ref_name }}
+        generate_release_notes: true
+        files: dist/*.whl
 
