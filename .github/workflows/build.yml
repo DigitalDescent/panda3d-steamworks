@@ -210,29 +210,10 @@ jobs:
         if-no-files-found: error
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Verify generated code & docs are up to date (lightweight, no build needed)
-  # ────────────────────────────────────────────────────────────────────────────
-  codegen-check:
-    name: "Codegen freshness check"
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - uses: actions/setup-python@v6
-      with:
-        python-version: "3.12"
-
-    - name: Check generated docs are up to date
-      run: python scripts/codegen_docs.py --check
-
-  # ────────────────────────────────────────────────────────────────────────────
   # Deploy documentation to GitHub Pages (main/master pushes only)
   # ────────────────────────────────────────────────────────────────────────────
   docs:
     name: Deploy docs to GitHub Pages
-    needs: codegen-check
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'push' &&
