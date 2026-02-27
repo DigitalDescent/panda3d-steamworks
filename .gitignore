@@ -9,12 +9,8 @@ linux_*/
 osx_*/
 Source/Interrogate*
 
-# Packaging build artifacts
-panda3d_steamworks/*.pyd
-panda3d_steamworks/*.so
-panda3d_steamworks/*.dll
-panda3d_steamworks/*.dylib
-panda3d_steamworks/*.pdb
+# Generated package directory (created by setup.py at build time)
+panda3d_steamworks/
 build/
 dist/
 *.egg-info/
