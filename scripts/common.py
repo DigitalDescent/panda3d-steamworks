@@ -189,8 +189,13 @@ def _find_interrogate_dir():
             candidate = join(sdk_path, subdir)
             if isdir(candidate) and isfile(join(candidate, interrogate_name)):
                 return realpath(candidate)
-    except Exception:
-        pass
+    except Exception as exc:
+        # Fall back to searching PATH if SDK-based discovery fails; log for diagnostics.
+        print(
+            "Warning: failed to resolve Panda3D SDK path while searching for "
+            "interrogate: {0}".format(exc),
+            file=stderr,
+        )
 
     # 3. Check if interrogate is on PATH (e.g. pipx or system install)
     which_result = shutil.which("interrogate")
