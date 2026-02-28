@@ -181,7 +181,18 @@ def _find_interrogate_dir():
     if isdir(scripts_dir) and isfile(join(scripts_dir, interrogate_name)):
         return realpath(scripts_dir)
 
-    # 2. Check if interrogate is on PATH (e.g. pipx or system install)
+    # 2. Check Panda3D SDK directories (handles build-isolation venvs where
+    #    sys.executable is a temp venv but panda3d still points to the SDK)
+    try:
+        sdk_path = get_panda_sdk_path()
+        for subdir in ("bin", join("python", "Scripts"), join("python", "bin")):
+            candidate = join(sdk_path, subdir)
+            if isdir(candidate) and isfile(join(candidate, interrogate_name)):
+                return realpath(candidate)
+    except Exception:
+        pass
+
+    # 3. Check if interrogate is on PATH (e.g. pipx or system install)
     which_result = shutil.which("interrogate")
     if which_result is not None:
         return realpath(dirname(which_result))

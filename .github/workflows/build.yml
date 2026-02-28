@@ -201,7 +201,20 @@ jobs:
         if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
           VERSION="${GITHUB_REF#refs/tags/v}"
         else
-          VERSION=$(git describe --tags --match 'v*' 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+          # git describe gives e.g. "v1.63.5-2-g8a818b1" → convert to PEP 440
+          # dev version: bump patch and add .devN  →  "1.63.6.dev2"
+          RAW=$(git describe --tags --match 'v*' 2>/dev/null | sed 's/^v//' || echo "")
+          if [[ "$RAW" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)-g.+$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH=$(( ${BASH_REMATCH[3]} + 1 ))
+            DEV="${BASH_REMATCH[4]}"
+            VERSION="${MAJOR}.${MINOR}.${PATCH}.dev${DEV}"
+          elif [[ -n "$RAW" ]]; then
+            VERSION="$RAW"
+          else
+            VERSION="0.0.0"
+          fi
         fi
         echo "version=$VERSION"
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
