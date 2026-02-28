@@ -118,17 +118,17 @@ jobs:
         }
 
     - name: Download Panda3D thirdparty (macOS)
-      if: >-
-        runner.os == 'macOS' &&
-        steps.cache-panda3d.outputs.cache-hit != 'true'
+      if: runner.os == 'macOS'
       run: |
-        curl -sLO "https://www.panda3d.org/download/panda3d-${{ env.P3D_TOOLS_VER }}/panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
-        tar -xf "panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
-        mv "panda3d-${{ env.P3D_TOOLS_VER }}/thirdparty" panda3d-src/thirdparty
-        # Fix Cg dylib id so pzip can run during the build.
-        install_name_tool -id \
-          "$(pwd)/panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib" \
-          panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib 2>/dev/null || true
+        if [ ! -d "panda3d-src/thirdparty/darwin-libs-a" ]; then
+          curl -sLO "https://www.panda3d.org/download/panda3d-${{ env.P3D_TOOLS_VER }}/panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
+          tar -xf "panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
+          mv "panda3d-${{ env.P3D_TOOLS_VER }}/thirdparty" panda3d-src/thirdparty
+          # Fix Cg dylib id so pzip can run during the build.
+          install_name_tool -id \
+            "$(pwd)/panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib" \
+            panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib 2>/dev/null || true
+        fi
 
     # ── 7. Build Panda3D from source ───────────────────────────────────────
     - name: Build Panda3D
