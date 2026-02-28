@@ -8,10 +8,6 @@ from panda3d import core
 from panda3d_steamworks import SteamFriends, SteamFriendFlags
 from panda3d_steamworks.showbase import SteamShowBase
 
-# EFriendFlags from steam_api_common.h
-K_E_FRIEND_FLAG_IMMEDIATE = 0x04  # regular friends
-
-
 def main():
     base = SteamShowBase(windowType='none')
 
