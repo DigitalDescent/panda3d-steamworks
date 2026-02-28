@@ -462,7 +462,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_command(
       TARGET ${PROJECT_NAME}
       POST_BUILD
-      COMMAND "install_name_tool" "-change" "@loader_path/../lib/lib${lib}.${PANDA_SHORT_VERSION}.dylib" "${PANDA_LIB_PATH}/lib${lib}.dylib" "${PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+      COMMAND "install_name_tool" "-change" "@loader_path/../lib/lib${lib}.${PANDA_SHORT_VERSION}.dylib" "${PANDA_LIB_PATH}/lib${lib}.dylib" "$<TARGET_FILE:${PROJECT_NAME}>"
       WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
   endforeach()
 endif()
