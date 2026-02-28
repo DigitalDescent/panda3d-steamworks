@@ -741,7 +741,7 @@ def _enum_class_name(enum_name):
 
 
 def generate_enums_header(api_data):
-    """Generate steamEnums.h containing one PUBLISHED class per Steam enum."""
+    """Generate steamEnums_bindings.h containing one PUBLISHED class per Steam enum."""
     skip = getattr(cfg, "SKIP_ENUMS", set())
     lines = []
     lines.append(_GENERATED_BANNER)
@@ -787,7 +787,7 @@ def generate_enums_source():
     lines = []
     lines.append(_GENERATED_BANNER)
     lines.append("")
-    lines.append('#include "steamEnums.h"')
+    lines.append('#include "steamEnums_bindings.h"')
     lines.append("")
     return "\n".join(lines)
 
@@ -920,14 +920,14 @@ def run_codegen(root_dir=None, check_only=False):
                 generated_files.append(path)
 
     # ------------------------------------------------------------------
-    # Generate enum wrapper classes (steamEnums.h / .cpp)
+    # Generate enum wrapper classes (steamEnums_bindings.h / .cpp)
     # ------------------------------------------------------------------
     if getattr(cfg, "ENABLE_ENUMS", False):
         enum_header_content = generate_enums_header(api_data)
         enum_source_content = generate_enums_source()
-        enum_header_path = os.path.join(output_dir, "steamEnums.h")
-        enum_source_path = os.path.join(output_dir, "steamEnums.cpp")
-        generated_headers.append("steamEnums.h")
+        enum_header_path = os.path.join(output_dir, "steamEnums_bindings.h")
+        enum_source_path = os.path.join(output_dir, "steamEnums_bindings.cpp")
+        generated_headers.append("steamEnums_bindings.h")
 
         for path, content in [(enum_header_path, enum_header_content),
                               (enum_source_path, enum_source_content)]:
