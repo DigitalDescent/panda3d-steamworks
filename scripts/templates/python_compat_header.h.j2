@@ -1,0 +1,12 @@
+{{ banner }}
+
+#pragma once
+
+// Provide a PyObject declaration that works for both
+// interrogate (CPPPARSER) and normal C++ compilation.
+#ifdef CPPPARSER
+struct _object;
+typedef _object PyObject;
+#else
+#include <Python.h>
+#endif

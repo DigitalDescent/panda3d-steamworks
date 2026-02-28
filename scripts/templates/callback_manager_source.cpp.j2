@@ -1,0 +1,189 @@
+{{ banner }}
+
+#include "steamCallbackManager_bindings.h"
+
+// Guard implementation from interrogate.
+#ifndef CPPPARSER
+
+#include <steam/steam_api.h>
+#include <steam/steam_gameserver.h>
+#include <Python.h>
+#include <vector>
+#include <string>
+
+{# ================================================================== #}
+{# Async call-result handlers                                          #}
+{# ================================================================== #}
+{% for s in async_structs %}
+// ------------------------------------------------------------
+// Async result handler: {{ s.name }}
+// ------------------------------------------------------------
+
+struct {{ s.handler_name }} {
+  CCallResult<{{ s.handler_name }}, {{ s.name }}> call_result;
+  PyObject *py_callback;
+  bool completed;
+
+  {{ s.handler_name }}(SteamAPICall_t call, PyObject *cb)
+    : py_callback(cb), completed(false) {
+    Py_XINCREF(py_callback);
+    call_result.Set(call, this, &{{ s.handler_name }}::OnComplete);
+  }
+
+  ~{{ s.handler_name }}() {
+    Py_XDECREF(py_callback);
+  }
+
+  void OnComplete({{ s.name }} *pResult, bool bIOFailure) {
+    if (py_callback && py_callback != Py_None && PyCallable_Check(py_callback)) {
+      PyObject *dict = PyDict_New();
+      PyObject *val;
+{% for entry in s.dict_entries %}
+      val = {{ entry.py_expr }};
+      PyDict_SetItemString(dict, "{{ entry.key }}", val);
+      Py_DECREF(val);
+{% endfor %}
+      val = bIOFailure ? Py_True : Py_False;
+      Py_INCREF(val);
+      PyDict_SetItemString(dict, "io_failure", val);
+      Py_DECREF(val);
+      PyObject *ret = PyObject_CallFunctionObjArgs(py_callback, dict, NULL);
+      if (!ret) PyErr_Print();
+      Py_XDECREF(ret);
+      Py_DECREF(dict);
+    }
+    completed = true;
+  }
+};
+
+static std::vector<{{ s.handler_name }}*> _pending_{{ s.name }};
+
+void _steam_async_call_{{ s.name }}(SteamAPICall_t call, PyObject *callback) {
+  auto *h = new {{ s.handler_name }}(call, callback);
+  _pending_{{ s.name }}.push_back(h);
+}
+
+{% endfor %}
+{# ================================================================== #}
+{# Cleanup helpers                                                     #}
+{# ================================================================== #}
+static void _cleanup_completed_calls() {
+{% for s in async_structs %}
+  for (auto it = _pending_{{ s.name }}.begin(); it != _pending_{{ s.name }}.end(); ) {
+    if ((*it)->completed) {
+      delete *it;
+      it = _pending_{{ s.name }}.erase(it);
+    } else {
+      ++it;
+    }
+  }
+{% endfor %}
+}
+
+static void _cancel_all_pending_calls() {
+{% for s in async_structs %}
+  for (auto *p : _pending_{{ s.name }}) delete p;
+  _pending_{{ s.name }}.clear();
+{% endfor %}
+}
+
+{% if broadcast_structs %}
+{# ================================================================== #}
+{# Panda3D messenger integration                                      #}
+{# ================================================================== #}
+
+// ============================================================
+// Panda3D messenger integration
+// ============================================================
+
+static PyObject *_py_messenger = nullptr;
+
+static void _ensure_messenger() {
+  if (_py_messenger) return;
+  PyObject *mod = PyImport_ImportModule("direct.showbase.MessengerGlobal");
+  if (!mod) { PyErr_Print(); return; }
+  _py_messenger = PyObject_GetAttrString(mod, "messenger");
+  Py_DECREF(mod);
+  if (!_py_messenger) PyErr_Print();
+}
+
+static void _send_event(const char *name, PyObject *dict) {
+  _ensure_messenger();
+  if (!_py_messenger) return;
+  PyObject *args_list = PyList_New(1);
+  Py_INCREF(dict);
+  PyList_SET_ITEM(args_list, 0, dict);
+  PyObject *ret = PyObject_CallMethod(_py_messenger, "send", "sO", name, args_list);
+  if (!ret) PyErr_Print();
+  Py_XDECREF(ret);
+  Py_DECREF(args_list);
+}
+
+{# ================================================================== #}
+{# Broadcast callback handler                                          #}
+{# ================================================================== #}
+
+// ============================================================
+// Broadcast callback handler
+// ============================================================
+
+class _BroadcastHandler {
+public:
+  _BroadcastHandler() :
+{% for s in broadcast_structs %}
+    {{ s.cb_member }}(this, &_BroadcastHandler::{{ s.handler_fn }}){{ "," if not loop.last else "" }}
+{% endfor %}
+  {}
+
+{% for s in broadcast_structs %}
+  void {{ s.handler_fn }}({{ s.name }} *pParam) {
+    PyObject *dict = PyDict_New();
+    PyObject *val;
+{% for entry in s.dict_entries %}
+    val = {{ entry.py_expr }};
+    PyDict_SetItemString(dict, "{{ entry.key }}", val);
+    Py_DECREF(val);
+{% endfor %}
+    _send_event("{{ s.event_name }}", dict);
+    Py_DECREF(dict);
+  }
+
+{% endfor %}
+private:
+{% for s in broadcast_structs %}
+  CCallback<_BroadcastHandler, {{ s.name }}, false> {{ s.cb_member }};
+{% endfor %}
+};
+
+static _BroadcastHandler *_g_broadcast_handler = nullptr;
+
+{% endif %}
+{# ================================================================== #}
+{# SteamCallbackManager implementation                                 #}
+{# ================================================================== #}
+
+// ============================================================
+// SteamCallbackManager implementation
+// ============================================================
+
+void SteamCallbackManager::run_callbacks() {
+{% if broadcast_structs %}
+  if (!_g_broadcast_handler) {
+    _g_broadcast_handler = new _BroadcastHandler();
+  }
+{% endif %}
+  SteamAPI_RunCallbacks();
+  _cleanup_completed_calls();
+}
+
+void SteamCallbackManager::shutdown() {
+{% if broadcast_structs %}
+  delete _g_broadcast_handler;
+  _g_broadcast_handler = nullptr;
+  Py_XDECREF(_py_messenger);
+  _py_messenger = nullptr;
+{% endif %}
+  _cancel_all_pending_calls();
+}
+
+#endif  // CPPPARSER

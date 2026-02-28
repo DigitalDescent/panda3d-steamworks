@@ -1,0 +1,153 @@
+{{ banner }}
+
+#include "{{ header_stem }}.h"
+
+// Guard everything below from interrogate's parser.
+#ifndef CPPPARSER
+
+#include <steam/steam_api.h>
+#include <steam/steam_api_flat.h>
+{% for inc in extra_includes %}
+#include {{ inc }}
+{% endfor %}
+
+{% if accessor_fn %}
+// Helper: returns the {{ iface_name }} interface pointer, or nullptr if not initialized.
+static {{ iface_name }} *{{ helper_name }}() {
+  return {{ accessor_fn }}();
+}
+
+{% endif %}
+{% if include_api_lifecycle %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::init
+//       Access: Published, Static
+//  Description: Initializes the Steamworks API.
+////////////////////////////////////////////////////////////////////
+bool {{ class_name }}::init() {
+  return SteamAPI_Init();
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::shutdown
+//       Access: Published, Static
+//  Description: Shuts down the Steamworks API.
+////////////////////////////////////////////////////////////////////
+void {{ class_name }}::shutdown() {
+  SteamAPI_Shutdown();
+}
+
+{% endif %}
+{% if needed_callresults %}
+// Forward declarations for async call-result registration
+{% for cr in needed_callresults %}
+extern void _steam_async_call_{{ cr }}(SteamAPICall_t, PyObject *);
+{% endfor %}
+
+{% endif %}
+{# ================================================================== #}
+{# Method body generation - one block per method                       #}
+{# ================================================================== #}
+{% for m in methods %}
+{% if m.kind == "simple" %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ m.snake_name }}
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+{{ m.return_type }} {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+  {{ iface_name }} *iface = {{ helper_name }}();
+  if (!iface) return {{ m.default_value }};
+  return iface->{{ m.steam_name }}({{ m.call_args }});
+}
+
+{% elif m.kind == "void" %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ m.snake_name }}
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+void {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+  {{ iface_name }} *iface = {{ helper_name }}();
+  if (iface) iface->{{ m.steam_name }}({{ m.call_args }});
+}
+
+{% elif m.kind == "string_return" %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ m.snake_name }}
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+  {{ iface_name }} *iface = {{ helper_name }}();
+  if (!iface) return std::string();
+  const char *result = iface->{{ m.steam_name }}({{ m.call_args }});
+  return result ? std::string(result) : std::string();
+}
+
+{% elif m.kind == "steamid_return" %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ m.snake_name }}
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+unsigned long long {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+  {{ iface_name }} *iface = {{ helper_name }}();
+  if (!iface) return 0;
+  return iface->{{ m.steam_name }}({{ m.call_args }}).ConvertToUint64();
+}
+
+{% elif m.kind == "buffer" %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ m.snake_name }}
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+std::string {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+  {{ iface_name }} *iface = {{ helper_name }}();
+  if (!iface) return std::string();
+  char buf[{{ m.buf_size }}];
+{% if m.ret_type_steam == "bool" %}
+  bool ok = iface->{{ m.steam_name }}({{ m.buffer_call_args }});
+  if (ok) return std::string(buf);
+{% elif m.ret_type_steam == "void" %}
+  iface->{{ m.steam_name }}({{ m.buffer_call_args }});
+  return std::string(buf);
+{% else %}
+  {{ m.ret_type_steam }} len = iface->{{ m.steam_name }}({{ m.buffer_call_args }});
+  if (len > 0) return std::string(buf);
+{% endif %}
+  return std::string();
+}
+
+{% elif m.kind == "async" %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ m.snake_name }}
+//       Access: Published, Static
+//  Description: Async. Invokes callback(dict) on completion.
+////////////////////////////////////////////////////////////////////
+unsigned long long {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+  {{ iface_name }} *iface = {{ helper_name }}();
+  if (!iface) return 0;
+  SteamAPICall_t call = iface->{{ m.steam_name }}({{ m.call_args }});
+  if (call == k_uAPICallInvalid) return 0;
+  if (callback && callback != Py_None && PyCallable_Check(callback)) {
+    _steam_async_call_{{ m.callresult }}(call, callback);
+  }
+  return (unsigned long long)call;
+}
+
+{% endif %}
+{% endfor %}
+{# ================================================================== #}
+{# Extra (hand-written) method implementations                        #}
+{# ================================================================== #}
+{% for em in extra_methods %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ em.name | default("extra_method") }}
+//       Access: Published, Static
+{% if em.comment %}
+//  Description: {{ em.comment }}
+{% endif %}
+////////////////////////////////////////////////////////////////////
+{% for line in em.implementation %}
+{{ line }}
+{% endfor %}
+
+{% endfor %}
+#endif  // CPPPARSER

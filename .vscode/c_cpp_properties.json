@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Win64",
+            "includePath": [
+                "${workspaceFolder}/source/native",
+                "${workspaceFolder}/thirdparty/steamworks/public",
+                "C:/Panda3D-1.11.0-x64/include",
+                "C:/Panda3D-1.11.0-x64/python/include"
+            ],
+            "defines": [
+                "_WIN32",
+                "WIN64",
+                "CPPPARSER"
+            ],
+            "windowsSdkVersion": "10.0",
+            "compilerPath": "cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}

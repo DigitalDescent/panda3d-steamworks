@@ -1,0 +1,22 @@
+{{ banner }}
+
+#pragma once
+
+#include "pandabase.h"
+
+{% for enum in enums %}
+////////////////////////////////////////////////////////////////////
+//       Class : {{ enum.class_name }}
+// Description : Wrapper for {{ enum.enum_name }} enum constants.
+////////////////////////////////////////////////////////////////////
+class EXPORT_CLASS {{ enum.class_name }} {
+PUBLISHED:
+{% for val in enum.constants %}
+  static const int {{ val.name }} = {{ val.value }};
+{% endfor %}
+
+private:
+  {{ enum.class_name }}() = delete;
+};
+
+{% endfor %}

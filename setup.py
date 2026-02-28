@@ -11,6 +11,7 @@ This file provides a custom ``build_ext`` command that:
    ``steam_api64.dll``) alongside it so that it is included in the wheel.
 """
 
+import glob
 import multiprocessing
 import os
 import platform
@@ -19,7 +20,7 @@ import subprocess
 import sys
 import sysconfig
 
-from setuptools import Distribution, Extension, setup
+from setuptools import Command, Distribution, Extension, setup
 from setuptools.command.build_ext import build_ext as _build_ext
 
 # ---------------------------------------------------------------------------
@@ -396,6 +397,43 @@ class CMakeBuild(_build_ext):
 
 
 # ---------------------------------------------------------------------------
+# Custom clean command
+# ---------------------------------------------------------------------------
+
+class CleanBindings(Command):
+    """Remove all generated *_bindings.h and *_bindings.cpp files from
+    source/native as well as the interrogate_module/wrapper files."""
+
+    description = "remove generated _bindings and interrogate files"
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        native_dir = os.path.join(ROOT_DIR, "source", "native")
+        patterns = [
+            os.path.join(native_dir, "*_bindings.h"),
+            os.path.join(native_dir, "*_bindings.cpp"),
+            os.path.join(native_dir, "interrogate_module.cpp"),
+            os.path.join(native_dir, "interrogate_wrapper.cpp"),
+        ]
+        removed = 0
+        for pattern in patterns:
+            for path in glob.glob(pattern):
+                print(f"removing {os.path.relpath(path, ROOT_DIR)}")
+                os.remove(path)
+                removed += 1
+        if removed:
+            print(f"\nRemoved {removed} generated file(s).")
+        else:
+            print("No generated files to remove.")
+
+
+# ---------------------------------------------------------------------------
 # Force platform-specific wheel tag even though we have no "real" Extension
 # ---------------------------------------------------------------------------
 
@@ -414,6 +452,6 @@ setup(
         # package so __init__.py can do ``from panda3d_steamworks.native import *``.
         CMakeExtension("panda3d_steamworks.native"),
     ],
-    cmdclass={"build_ext": CMakeBuild},
+    cmdclass={"build_ext": CMakeBuild, "clean": CleanBindings},
     distclass=BinaryDistribution,
 )

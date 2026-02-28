@@ -1,0 +1,48 @@
+{{ banner }}
+
+#pragma once
+
+#include "pandabase.h"
+
+#ifndef CPPPARSER
+#include <steam/isteamnetworkingsockets.h>
+#include <steam/steamnetworkingtypes.h>
+#endif
+
+////////////////////////////////////////////////////////////////////
+// Type aliases for Steam networking handle types, used throughout
+// the networking classes to wrap raw Steamworks handle values.
+////////////////////////////////////////////////////////////////////
+typedef uint32_t SteamNetworkListenSocketHandle;
+typedef uint32_t SteamNetworkPollGroupHandle;
+typedef uint32_t SteamNetworkConnectionHandle;
+
+////////////////////////////////////////////////////////////////////
+// Sentinel constants representing invalid / uninitialized handles.
+////////////////////////////////////////////////////////////////////
+static constexpr SteamNetworkConnectionHandle INVALID_STEAM_NETWORK_CONNECTION_HANDLE = 0U;
+static constexpr SteamNetworkListenSocketHandle INVALID_STEAM_NETWORK_LISTEN_SOCKET_HANDLE = 0U;
+static constexpr SteamNetworkPollGroupHandle INVALID_STEAM_NETWORK_POLL_GROUP_HANDLE = 0U;
+
+////////////////////////////////////////////////////////////////////
+//       Class : SteamConstants
+// Description : Steamworks API constants from steam_api.json.
+//               Access individual constants as static class members:
+//                 SteamConstants::k_cchGameExtraInfoMax  // 64
+////////////////////////////////////////////////////////////////////
+class EXPORT_CLASS SteamConstants {
+PUBLISHED:
+{% for c in constants %}
+{% if c.comment %}
+  // {{ c.comment }}
+{% endif %}
+{% if c.is_float %}
+  static constexpr float {{ c.name }} = {{ c.value }};
+{% else %}
+  static const {{ c.cpp_type }} {{ c.name }} = {{ c.value }};
+{% endif %}
+{% endfor %}
+
+private:
+  SteamConstants() = delete;
+};

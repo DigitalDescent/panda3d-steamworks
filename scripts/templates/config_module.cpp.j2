@@ -1,0 +1,35 @@
+{{ banner }}
+
+#include "config_module.h"
+
+// Generated headers:
+{% for hdr in generated_headers %}
+#include "{{ hdr }}"
+{% endfor %}
+
+// Hand-written headers:
+#include "steamNetworkManager.h"
+
+#include "dconfig.h"
+
+Configure(config_steam);
+NotifyCategoryDef(steam , "");
+
+ConfigureFn(config_steam) {
+  init_libsteam();
+}
+
+void
+init_libsteam() {
+  static bool initialized = false;
+  if (initialized) {
+    return;
+  }
+  initialized = true;
+
+  // Initialize each class's TypeHandle and register it with the factory.
+  SteamNetworkManager::init_type();
+
+  return;
+}
+

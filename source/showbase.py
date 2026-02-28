@@ -3,7 +3,11 @@ Copyright (c) 2026 Digital Descent LLC. All rights reserved.
 """
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamCallbackManager, SteamNetworkingSockets, SteamUserStats, SteamMatchmaking, SteamFriends
+from panda3d_steamworks import (
+    SteamApps, 
+    SteamCallbackManager, 
+    SteamNetworkingSocket
+)
 
 from direct.showbase.ShowBase import ShowBase
 
@@ -34,7 +38,7 @@ class SteamShowBase(ShowBase):
         """
 
         SteamCallbackManager.run_callbacks()
-        SteamNetworkingSockets.run_callbacks()
+        SteamNetworkingSocket.run_callbacks()
         
         return task.cont
 

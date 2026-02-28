@@ -1,0 +1,46 @@
+{{ banner }}
+
+#pragma once
+
+#include "pandabase.h"
+{% if has_async %}
+#include "steamPython_bindings.h"
+{% endif %}
+{% if needs_string %}
+#include <string>
+{% endif %}
+
+////////////////////////////////////////////////////////////////////
+//       Class : {{ class_name }}
+// Description : {{ description_lines[0] }}
+{% for line in description_lines[1:] %}
+//{{ line }}
+{% endfor %}
+////////////////////////////////////////////////////////////////////
+class EXPORT_CLASS {{ class_name }} {
+PUBLISHED:
+{% if include_api_lifecycle %}
+  // Initialization - must be called before any other Steam methods.
+  // Returns true if SteamAPI was initialized successfully.
+  static bool init();
+  static void shutdown();
+
+{% endif %}
+{% for m in methods %}
+{% if m.kind == "async" %}
+  // Async: callback receives dict with result fields.
+  // Returns call handle (0 on failure).
+{% endif %}
+  static {{ m.return_type }} {{ m.snake_name }}({{ m.params_str }});
+{% endfor %}
+{% for em in extra_methods %}
+
+{% if em.comment %}
+  // {{ em.comment }}
+{% endif %}
+  static {{ em.declaration }};
+{% endfor %}
+
+private:
+  {{ class_name }}() = delete;
+};

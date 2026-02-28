@@ -180,10 +180,73 @@ INTERFACE_OVERRIDES = {
             },
         ],
     },
+    # Rename these wrappers so they don't collide with the Steamworks SDK
+    # inline accessor functions of the same name (e.g.
+    # ``inline ISteamNetworkingSockets *SteamNetworkingSockets()``).
+    "ISteamNetworkingSockets": {
+        "class_name": "SteamNetworkingSocket",
+    },
+    "ISteamNetworkingUtils": {
+        "class_name": "SteamNetworkingUtil",
+    },
     # Example: skip specific methods on an interface
     # "ISteamFriends": {
     #     "skip_methods": ["ActivateGameOverlayInviteDialogConnectString"],
     # },
+}
+
+# =========================================================================
+# Constants Configuration
+# =========================================================================
+
+# Enable generation of a SteamConstants wrapper class exposing the global
+# constants defined in the ``consts`` section of steam_api.json.
+#
+#   from panda3d_steamworks import SteamConstants
+#   SteamConstants.k_cchGameExtraInfoMax   # 64
+ENABLE_CONSTANTS = True
+
+# Constants to skip entirely (set of const names from steam_api.json).
+SKIP_CONSTANTS: set = set()
+
+# Map consttype from the JSON -> C++ type for the PUBLISHED static const.
+# Any consttype not listed here causes the constant to be silently skipped.
+CONST_TYPES = {
+    # Primitive types
+    "int":                            "int",
+    "uint32":                         "unsigned int",
+    "uint16":                         "unsigned short",
+    "uint8":                          "unsigned char",
+    "int32":                          "int",
+    "int64":                          "long long",
+    "uint64":                         "unsigned long long",
+    "float":                          "float",
+    "double":                         "double",
+    "unsigned int":                   "unsigned int",
+
+    # Steam typedefs -> resolved C++ types
+    "AppId_t":                        "unsigned int",
+    "DepotId_t":                      "unsigned int",
+    "SteamAPICall_t":                 "unsigned long long",
+    "AccountID_t":                    "unsigned int",
+    "PartyBeaconID_t":                "unsigned long long",
+    "HAuthTicket":                    "unsigned int",
+    "FriendsGroupID_t":               "short",
+    "PublishedFileId_t":              "unsigned long long",
+    "UGCHandle_t":                    "unsigned long long",
+    "PublishedFileUpdateHandle_t":    "unsigned long long",
+    "UGCFileWriteStreamHandle_t":     "unsigned long long",
+    "UGCQueryHandle_t":               "unsigned long long",
+    "UGCUpdateHandle_t":              "unsigned long long",
+    "SteamItemInstanceID_t":          "unsigned long long",
+    "SteamInventoryResult_t":         "int",
+    "SteamInventoryUpdateHandle_t":   "unsigned long long",
+    "HSteamNetConnection":            "unsigned int",
+    "HSteamListenSocket":             "unsigned int",
+    "HSteamNetPollGroup":             "unsigned int",
+    "SteamNetworkingPOPID":           "unsigned int",
+    "HHTMLBrowser":                   "unsigned int",
+    "ScreenshotHandle":               "unsigned int",
 }
 
 # =========================================================================
