@@ -55,6 +55,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: recursive
+        fetch-depth: 0           # setuptools-scm needs full history + tags
 
     # ── 2. Python ──────────────────────────────────────────────────────────
     - name: Setup Python ${{ matrix.python-version }}
