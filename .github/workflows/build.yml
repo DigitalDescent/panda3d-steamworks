@@ -45,7 +45,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2022, ubuntu-24.04, macOS-15]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     runs-on: ${{ matrix.os }}
 
@@ -82,21 +82,12 @@ jobs:
 
     # ── 4. Caches ──────────────────────────────────────────────────────────
     #   • Panda3D build  → per (os, python-version, ref)
-    #   • Panda3D thirdparty (Windows) → shared across Python versions
     - name: Cache Panda3D build
       id: cache-panda3d
       uses: actions/cache@v5
       with:
         path: panda3d-src/built
         key: panda3d-built-${{ runner.os }}-py${{ matrix.python-version }}-${{ env.PANDA3D_REF }}-v1
-
-    - name: Cache Panda3D thirdparty (Windows)
-      if: runner.os == 'Windows'
-      id: cache-thirdparty-win
-      uses: actions/cache@v5
-      with:
-        path: panda3d-src/thirdparty
-        key: panda3d-thirdparty-windows-${{ env.P3D_TOOLS_VER }}-v1
 
     # ── 5. Clone Panda3D source (only when build not cached) ───────────────
     - name: Clone Panda3D
@@ -110,9 +101,7 @@ jobs:
 
     # ── 6. Platform thirdparty downloads ───────────────────────────────────
     - name: Download Panda3D thirdparty (Windows)
-      if: >-
-        runner.os == 'Windows' &&
-        steps.cache-thirdparty-win.outputs.cache-hit != 'true'
+      if: runner.os == 'Windows'
       shell: powershell
       run: |
         if (!(Test-Path "panda3d-src\thirdparty\win-libs-vc14-x64")) {
@@ -129,17 +118,17 @@ jobs:
         }
 
     - name: Download Panda3D thirdparty (macOS)
-      if: >-
-        runner.os == 'macOS' &&
-        steps.cache-panda3d.outputs.cache-hit != 'true'
+      if: runner.os == 'macOS'
       run: |
-        curl -sLO "https://www.panda3d.org/download/panda3d-${{ env.P3D_TOOLS_VER }}/panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
-        tar -xf "panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
-        mv "panda3d-${{ env.P3D_TOOLS_VER }}/thirdparty" panda3d-src/thirdparty
-        # Fix Cg dylib id so pzip can run during the build.
-        install_name_tool -id \
-          "$(pwd)/panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib" \
-          panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib 2>/dev/null || true
+        if [ ! -d "panda3d-src/thirdparty/darwin-libs-a" ]; then
+          curl -sLO "https://www.panda3d.org/download/panda3d-${{ env.P3D_TOOLS_VER }}/panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
+          tar -xf "panda3d-${{ env.P3D_TOOLS_VER }}-tools-mac.tar.gz"
+          mv "panda3d-${{ env.P3D_TOOLS_VER }}/thirdparty" panda3d-src/thirdparty
+          # Fix Cg dylib id so pzip can run during the build.
+          install_name_tool -id \
+            "$(pwd)/panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib" \
+            panda3d-src/thirdparty/darwin-libs-a/nvidiacg/lib/libCg.dylib 2>/dev/null || true
+        fi
 
     # ── 7. Build Panda3D from source ───────────────────────────────────────
     - name: Build Panda3D
@@ -230,7 +219,7 @@ jobs:
 
     # ── 9b. Repair wheels (Linux) ──────────────────────────────────────────
     #   PyPI rejects bare "linux_x86_64" tags; auditwheel converts them to
-    #   the appropriate manylinux tag.  delocate fixes macOS wheels similarly.
+    #   the appropriate manylinux tag.
     - name: Repair wheel (Linux - auditwheel)
       if: runner.os == 'Linux'
       run: |
