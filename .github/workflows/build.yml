@@ -234,6 +234,16 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Generate API docs
+      run: python scripts/codegen_docs.py
 
     - name: Setup Pages
       uses: actions/configure-pages@v5
