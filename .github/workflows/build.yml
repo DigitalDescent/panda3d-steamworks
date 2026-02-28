@@ -219,15 +219,6 @@ jobs:
         rm -rf dist
         mv dist-repaired dist
 
-    - name: Repair wheel (macOS - delocate)
-      if: runner.os == 'macOS'
-      run: |
-        pip install delocate
-        mkdir -p dist-repaired
-        delocate-wheel -w dist-repaired dist/*.whl
-        rm -rf dist
-        mv dist-repaired dist
-
     # ── 10. Upload ─────────────────────────────────────────────────────────
     - name: Upload wheel artifact
       uses: actions/upload-artifact@v4
