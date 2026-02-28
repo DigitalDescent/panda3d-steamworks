@@ -97,7 +97,7 @@ def interrogate():
                     "_far", "__near", "__far", "__stdcall"]
 
     if get_compiler_name() == "GCC":
-        defines += ['__attribute__\(x\)=']
+        defines += [r'__attribute__\(x\)=']
         if is_64_bit():
             defines += ['_LP64']
         else:
