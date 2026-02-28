@@ -5,13 +5,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamUser, SteamFriends
+from panda3d_steamworks.showbase import SteamShowBase
+from panda3d_steamworks import SteamUser, SteamFriends
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     steam_id = SteamUser.get_steam_id()
     persona = SteamFriends.get_persona_name()
@@ -37,7 +36,7 @@ def main():
         print(f"  Regular level    : {badge}")
         print(f"  Foil level       : {badge_foil}")
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

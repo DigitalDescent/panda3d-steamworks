@@ -1,5 +1,8 @@
 # Include all C++ source / headers needed for the build
-recursive-include source *.cpp *.cxx *.cc *.c *.h *.hpp *.I *.in
+recursive-include source/native *.cpp *.cxx *.cc *.c *.h *.hpp *.I *.in
+
+# Python source files (copied into panda3d_steamworks/ at build time)
+recursive-include source *.py
 
 # CMake build system
 include CMakeLists.txt

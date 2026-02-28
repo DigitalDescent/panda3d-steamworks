@@ -14,12 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
 from panda3d_steamworks import SteamApps, SteamGameServer, SteamGameServerStats
+from panda3d_steamworks.showbase import SteamShowBase
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     # ==================================================================
     # SteamGameServer - server identity & metadata
@@ -103,7 +102,7 @@ def main():
     # Commit changes:
     # SteamGameServerStats.store_user_stats(player_steam_id)
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

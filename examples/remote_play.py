@@ -11,13 +11,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamRemotePlay, SteamFriends
+from panda3d_steamworks.showbase import SteamShowBase
+from panda3d_steamworks import SteamRemotePlay, SteamFriends
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     # ------------------------------------------------------------------
     # Active Remote Play sessions
@@ -48,7 +47,7 @@ def main():
     # print(f"Direct input enabled: {ok}")
     # SteamRemotePlay.disable_remote_play_together_direct_input()
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

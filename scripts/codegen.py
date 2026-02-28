@@ -348,7 +348,7 @@ def generate_header(iface_name, iface_data, iface_cfg, methods_info):
     lines.append("")
     lines.append('#include "pandabase.h"')
     if has_async:
-        lines.append('#include "steamPython.h"')
+        lines.append('#include "steamPython_bindings.h"')
     if needs_string:
         lines.append("#include <string>")
     lines.append("")
@@ -835,10 +835,10 @@ def generate_config_module_cpp(generated_headers):
 # ========================================================================
 
 def _class_name_to_filename(class_name):
-    """SteamApps -> steamApps   (camelCase file naming convention)."""
+    """SteamApps -> steamApps_bindings   (camelCase + _bindings suffix)."""
     if not class_name:
         return class_name
-    return class_name[0].lower() + class_name[1:]
+    return class_name[0].lower() + class_name[1:] + "_bindings"
 
 
 # ========================================================================
@@ -889,8 +889,8 @@ def run_codegen(root_dir=None, check_only=False):
         # steamPython.h - PyObject compatibility header
         py_compat_content = cbgen.generate_python_compat_header(
             _GENERATED_BANNER)
-        py_compat_path = os.path.join(output_dir, "steamPython.h")
-        generated_headers.append("steamPython.h")
+        py_compat_path = os.path.join(output_dir, "steamPython_bindings.h")
+        generated_headers.append("steamPython_bindings.h")
 
         cb_header_content = cbgen.generate_callback_manager_header(
             _GENERATED_BANNER)
@@ -900,10 +900,10 @@ def run_codegen(root_dir=None, check_only=False):
             broadcast_struct_names, callback_struct_map,
             typedefs, enums, _GENERATED_BANNER)
 
-        cb_header_path = os.path.join(output_dir, "steamCallbackManager.h")
-        cb_source_path = os.path.join(output_dir, "steamCallbackManager.cpp")
+        cb_header_path = os.path.join(output_dir, "steamCallbackManager_bindings.h")
+        cb_source_path = os.path.join(output_dir, "steamCallbackManager_bindings.cpp")
 
-        generated_headers.append("steamCallbackManager.h")
+        generated_headers.append("steamCallbackManager_bindings.h")
 
         for path, content in [(py_compat_path, py_compat_content),
                               (cb_header_path, cb_header_content),

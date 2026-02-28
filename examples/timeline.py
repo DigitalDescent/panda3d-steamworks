@@ -13,13 +13,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamTimeline
+from panda3d_steamworks.showbase import SteamShowBase
+from panda3d_steamworks import SteamTimeline
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     # ------------------------------------------------------------------
     # Tooltips - short descriptions that appear on the timeline bar
@@ -66,7 +65,7 @@ def main():
     # async - result arrives via callback
     # SteamTimeline.does_game_phase_recording_exist("boss_fight_01")
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

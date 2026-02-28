@@ -1,7 +1,7 @@
 """Demonstrate async methods and callbacks with Panda3D Steamworks.
 
 Shows how to:
-- Process Steam callbacks every frame via a Panda3D task
+- Subclass SteamShowBase for automatic Steam init, callback pumping, and shutdown
 - Use async matchmaking (create/join/list lobbies) with Python callables
 - Handle broadcast callbacks via Panda3D's accept()/ignore() pattern
 
@@ -12,7 +12,6 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from direct.showbase.ShowBase import ShowBase
 from panda3d import core
 from panda3d_steamworks import (
     SteamApps,
@@ -23,24 +22,20 @@ from panda3d_steamworks import (
     SteamResult,
     SteamUserStats,
 )
+from panda3d_steamworks.showbase import SteamShowBase
 
 
-class AsyncDemo(ShowBase):
-    """Minimal app that exercises the async callback system."""
+class AsyncDemo(SteamShowBase):
+    """Minimal app that exercises the async callback system.
+
+    SteamShowBase automatically:
+      - Calls SteamApps.init() during __init__
+      - Pumps SteamCallbackManager.run_callbacks() every frame
+      - Shuts down Steam cleanly in finalizeExit()
+    """
 
     def __init__(self):
-        super().__init__()
-
-        # ------------------------------------------------------------------
-        # Initialise Steam
-        # ------------------------------------------------------------------
-        if not SteamApps.init():
-            print("ERROR: Steam failed to initialise.")
-            sys.exit(1)
-
-        # Pump Steam callbacks every frame.  This is **required** for any
-        # async method or broadcast callback to fire.
-        self.task_mgr.add(self._steam_update, "steam_update")
+        super().__init__(windowType='none')
 
         # ------------------------------------------------------------------
         # Listen for broadcast callbacks via Panda3D messenger
@@ -81,14 +76,7 @@ class AsyncDemo(ShowBase):
             print("  Failed to create lobby.")
 
         print("\nWaiting for callbacks... (press Escape to quit)\n")
-        self.accept("escape", self._shutdown)
-
-    # ------------------------------------------------------------------
-    # Task: pump Steam every frame
-    # ------------------------------------------------------------------
-    def _steam_update(self, task):
-        SteamCallbackManager.run_callbacks()
-        return task.cont
+        self.accept("escape", self.userExit)
 
     # ------------------------------------------------------------------
     # Async call result handlers (receive a dict)
@@ -160,17 +148,6 @@ class AsyncDemo(ShowBase):
     def _on_dlc_installed(self, result):
         app_id = result["app_id"]
         print(f"[BROADCAST] DLC installed: {app_id}")
-
-    # ------------------------------------------------------------------
-    # Shutdown
-    # ------------------------------------------------------------------
-    def _shutdown(self):
-        print("\nShutting down...")
-        # ignore_all() cleans up all accepted events automatically
-        self.ignore_all()
-        SteamCallbackManager.shutdown()
-        SteamApps.shutdown()
-        self.userExit()
 
 
 if __name__ == "__main__":

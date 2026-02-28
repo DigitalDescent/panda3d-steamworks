@@ -18,8 +18,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
+from panda3d_steamworks.showbase import SteamShowBase
 from panda3d_steamworks import (
-    SteamApps,
     SteamNetworking,
     SteamNetworkingSockets,
     SteamNetworkingUtils,
@@ -27,9 +27,7 @@ from panda3d_steamworks import (
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     # ==================================================================
     # SteamNetworkingUtils - relay network & configuration
@@ -77,7 +75,7 @@ def main():
     # SteamNetworking.close_p2_p_session_with_user(steam_id)
     # SteamNetworking.close_p2_p_channel_with_user(steam_id, channel)
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

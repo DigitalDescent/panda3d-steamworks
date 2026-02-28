@@ -5,13 +5,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamFriends, SteamFriendFlags
+from panda3d_steamworks import SteamFriends, SteamFriendFlags
+from panda3d_steamworks.showbase import SteamShowBase
+
+# EFriendFlags from steam_api_common.h
+K_E_FRIEND_FLAG_IMMEDIATE = 0x04  # regular friends
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     persona = SteamFriends.get_persona_name()
     print(f"Logged in as: {persona}\n")
@@ -51,7 +53,7 @@ def main():
             coplay_id = SteamFriends.get_coplay_friend(i)
             print(f"  [{i+1}] Steam ID: {coplay_id}")
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

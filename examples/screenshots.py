@@ -1,52 +1,75 @@
 """Hook into the Steam screenshot system.
 
+Shows how to:
+- Hook screenshots so your app controls capture timing
+- Listen for ScreenshotRequested (user pressed F12)
+- Listen for ScreenshotReady (screenshot saved to library)
+- Trigger screenshots programmatically
+
 When screenshot hooking is enabled, pressing the Steam screenshot key
-(default F12) will NOT automatically capture — instead your game is
-expected to handle it (e.g. via a callback) so you can capture the
-frame at the right moment without UI overlays.
+(default F12) will NOT automatically capture — instead the
+Steam-ScreenshotRequested broadcast fires so your game can capture
+the frame at the right moment without UI overlays.
 """
 
 import sys
-import time
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamScreenshots
+from panda3d_steamworks.showbase import SteamShowBase
+from panda3d_steamworks import SteamScreenshots
 
 
-def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+class ScreenshotDemo(SteamShowBase):
+    """App that demonstrates screenshot hooking with proper callbacks."""
 
-    hooked = SteamScreenshots.is_screenshots_hooked()
-    print(f"Screenshots currently hooked: {hooked}")
+    def __init__(self):
+        super().__init__(windowType='none')
+
+        # ------------------------------------------------------------------
+        # Listen for screenshot broadcast callbacks
+        # ------------------------------------------------------------------
+        self.accept("Steam-ScreenshotRequested", self._on_screenshot_requested)
+        self.accept("Steam-ScreenshotReady", self._on_screenshot_ready)
+
+        # ------------------------------------------------------------------
+        # Hook screenshots — your app is now responsible for captures
+        # ------------------------------------------------------------------
+        SteamScreenshots.hook_screenshots(True)
+        print(f"Screenshots hooked: {SteamScreenshots.is_screenshots_hooked()}")
+        print("Press F12 in Steam to trigger a ScreenshotRequested callback.")
+
+        # ------------------------------------------------------------------
+        # Trigger a screenshot programmatically
+        # ------------------------------------------------------------------
+        print("\nTriggering a screenshot programmatically ...")
+        SteamScreenshots.trigger_screenshot()
+
+        self.accept("escape", self._cleanup)
+        print("\nWaiting for callbacks... (press Escape to quit)\n")
 
     # ------------------------------------------------------------------
-    # Trigger a screenshot manually
+    # Broadcast callback handlers
     # ------------------------------------------------------------------
-    print("\nTriggering a Steam screenshot ...")
-    SteamScreenshots.trigger_screenshot()
-    print("  Screenshot triggered!  Check your Steam screenshot library.")
+    def _on_screenshot_requested(self, result):
+        """Fires when the user presses the screenshot key (F12) while hooked."""
+        print(f"[BROADCAST] ScreenshotRequested: {result}")
+        # In a real game you would capture the frame buffer here and call
+        # SteamScreenshots.write_screenshot() or add_screenshot_to_library().
+        print("  -> Your app should capture the frame now.")
 
-    # ------------------------------------------------------------------
-    # Hook / unhook screenshots
-    # ------------------------------------------------------------------
-    # When hooked, your app is responsible for capturing frames.
-    # This is useful to avoid capturing debug UI or overlays.
-    print("\nEnabling screenshot hook ...")
-    SteamScreenshots.hook_screenshots(True)
-    print(f"  Hooked: {SteamScreenshots.is_screenshots_hooked()}")
+    def _on_screenshot_ready(self, result):
+        """Fires when a screenshot has been saved to the Steam library."""
+        print(f"[BROADCAST] ScreenshotReady: {result}")
 
-    time.sleep(2)
-
-    print("Disabling screenshot hook ...")
-    SteamScreenshots.hook_screenshots(False)
-    print(f"  Hooked: {SteamScreenshots.is_screenshots_hooked()}")
-
-    SteamApps.shutdown()
+    def _cleanup(self):
+        """Unhook screenshots before exiting."""
+        SteamScreenshots.hook_screenshots(False)
+        print("Screenshots unhooked.")
+        self.userExit()
 
 
 if __name__ == "__main__":
-    main()
+    demo = ScreenshotDemo()
+    demo.run()

@@ -366,12 +366,12 @@ add_definitions("/DPB_MODULE=${PROJECT_NAME}")
 add_definitions("/DPB_CFG_MODULE=${PROJECT_NAME}")
 
 # Collect sources for compiling
-file(GLOB_RECURSE SOURCES source/*.cpp source/*.cxx source/*.I source/*.hpp source/*.h source/*.cc source/*.c)
-include_directories("source/")
+file(GLOB_RECURSE SOURCES source/native/*.cpp source/native/*.cxx source/native/*.I source/native/*.hpp source/native/*.h source/native/*.cc source/native/*.c)
+include_directories("source/native/")
 set(SOURCES ${SOURCES_H} ${SOURCES})
 
 # Collect subdirs for compiling
-file(GLOB POSSIBLE_DIRS RELATIVE ${CMAKE_CURRENT_LIST_DIR} source/*)
+file(GLOB POSSIBLE_DIRS RELATIVE ${CMAKE_CURRENT_LIST_DIR} source/native/*)
 foreach(PDIR ${POSSIBLE_DIRS})
   if (IS_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/${PDIR})
     include_directories("${PDIR}")
@@ -441,7 +441,7 @@ endif()
 add_custom_command(
     TARGET ${PROJECT_NAME}
     POST_BUILD
-    COMMAND "${PYTHON_EXECUTABLE}" "-B" "${CMAKE_CURRENT_LIST_DIR}/scripts/finalize.py" "${PROJECT_NAME}"
+    COMMAND "${PYTHON_EXECUTABLE}" "-B" "${CMAKE_CURRENT_LIST_DIR}/scripts/finalize.py" "${PROJECT_NAME}" "panda3d_steamworks"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
 
 # Make shared library paths absolute on macOS

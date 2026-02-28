@@ -1,11 +1,14 @@
 """Use the Steam HTML Surface to render web content.
 
+Shows how to:
+- Initialise the HTML Surface subsystem
+- Create a browser instance asynchronously and handle the callback
+- Load a URL once the browser handle is available
+- Listen for navigation and title-change broadcast events
+
 The HTML Surface provides a Chromium-based browser that can be used for
 in-game web views (e.g. news pages, community hubs, or custom UI).
-
-This example creates a browser instance, loads a URL, and demonstrates
-basic browser operations.  In a real game you would render the resulting
-texture to a Panda3D card or GUI element.
+In a real game you would render the resulting texture to a Panda3D card.
 """
 
 import sys
@@ -14,93 +17,100 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamHTMLSurface, SteamCallbackManager
+from panda3d_steamworks.showbase import SteamShowBase
+from panda3d_steamworks import SteamHTMLSurface
 
 
-def on_browser_created(result):
-    """Called when CreateBrowser completes (async)."""
-    print(f"Browser created (async result): {result}")
+class HTMLSurfaceDemo(SteamShowBase):
+    """App that creates an HTML Surface browser and handles its callbacks."""
 
+    def __init__(self):
+        super().__init__(windowType='none')
 
-def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+        self._browser_handle = None
 
-    # ------------------------------------------------------------------
-    # Initialise the HTML Surface subsystem
-    # ------------------------------------------------------------------
-    ok = SteamHTMLSurface.init()
-    print(f"HTMLSurface.init(): {ok}")
+        # ------------------------------------------------------------------
+        # Listen for HTML Surface broadcast callbacks
+        # ------------------------------------------------------------------
+        self.accept("Steam-HTML_BrowserReady", self._on_browser_ready)
+        self.accept("Steam-HTML_StartRequest", self._on_start_request)
+        self.accept("Steam-HTML_FinishedRequest", self._on_finished_request)
+        self.accept("Steam-HTML_ChangedTitle", self._on_title_changed)
+        self.accept("Steam-HTML_URLChanged", self._on_url_changed)
 
-    if not ok:
-        SteamApps.shutdown()
-        return
+        # ------------------------------------------------------------------
+        # Initialise the HTML Surface subsystem
+        # ------------------------------------------------------------------
+        ok = SteamHTMLSurface.init()
+        print(f"HTMLSurface.init(): {ok}")
 
-    # ------------------------------------------------------------------
-    # Create a browser (async - result comes via callback)
-    # ------------------------------------------------------------------
-    SteamHTMLSurface.create_browser("Panda3D Game", "")
-    print("CreateBrowser requested (async).")
+        if not ok:
+            print("Failed to initialise HTML Surface.")
+            self.userExit()
+            return
 
-    # In a real application you would pump callbacks until you receive
-    # the browser handle, then use it for all further operations.
-    # For demonstration purposes we show the available API surface:
+        # ------------------------------------------------------------------
+        # Create a browser (async — result comes via callback)
+        # ------------------------------------------------------------------
+        SteamHTMLSurface.create_browser("Panda3D Game", "")
+        print("CreateBrowser requested (async) — waiting for callback...")
 
-    # ------------------------------------------------------------------
-    # Browser operations (require a valid browser handle)
-    # ------------------------------------------------------------------
-    # handle = <received from CreateBrowser callback>
-    #
-    # SteamHTMLSurface.load_url(handle, "https://store.steampowered.com", "")
-    # SteamHTMLSurface.set_size(handle, 1280, 720)
-    # SteamHTMLSurface.go_back(handle)
-    # SteamHTMLSurface.go_forward(handle)
-    # SteamHTMLSurface.reload(handle)
-    # SteamHTMLSurface.stop_load(handle)
-    # SteamHTMLSurface.find(handle, "panda", False, False)
-    # SteamHTMLSurface.stop_find(handle)
-    #
-    # Mouse / scroll interaction:
-    # SteamHTMLSurface.mouse_move(handle, 640, 360)
-    # SteamHTMLSurface.mouse_wheel(handle, -120)
-    # SteamHTMLSurface.set_horizontal_scroll(handle, 0)
-    # SteamHTMLSurface.set_vertical_scroll(handle, 200)
-    #
-    # Execute JavaScript in the page:
-    # SteamHTMLSurface.execute_javascript(handle, "alert('Hello from Panda3D!')")
-    #
-    # Developer tools and page inspection:
-    # SteamHTMLSurface.open_developer_tools(handle)
-    # SteamHTMLSurface.view_source(handle)
-    #
-    # Clipboard:
-    # SteamHTMLSurface.copy_to_clipboard(handle)
-    # SteamHTMLSurface.paste_from_clipboard(handle)
-    #
-    # Appearance:
-    # SteamHTMLSurface.set_page_scale_factor(handle, 1.5, 0, 0)
-    # SteamHTMLSurface.set_dpi_scaling_factor(handle, 2.0)
-    # SteamHTMLSurface.set_background_mode(handle, True)
-    # SteamHTMLSurface.set_key_focus(handle, True)
-    #
-    # Custom headers and cookies:
-    # SteamHTMLSurface.add_header(handle, "X-Custom", "value")
-    # SteamHTMLSurface.set_cookie("example.com", "key", "val", "/", 0, True, False)
-    #
-    # Dialog / navigation control:
-    # SteamHTMLSurface.js_dialog_response(handle, True)
-    # SteamHTMLSurface.allow_start_request(handle, True)
-    #
-    # Destroy the browser when done:
-    # SteamHTMLSurface.remove_browser(handle)
+        self.accept("escape", self._cleanup)
+        print("Press Escape to quit.\n")
 
     # ------------------------------------------------------------------
-    # Shutdown
+    # Callback handlers
     # ------------------------------------------------------------------
-    SteamHTMLSurface.shutdown()
-    SteamApps.shutdown()
+    def _on_browser_ready(self, result):
+        """Fires when CreateBrowser completes.  We now have a valid handle."""
+        print(f"[BROADCAST] BrowserReady: {result}")
+        handle = result.get("browser_handle", result.get("unBrowserHandle", None))
+        if handle is None:
+            print("  Could not retrieve browser handle.")
+            return
+
+        self._browser_handle = handle
+        print(f"  Browser handle: {handle}")
+
+        # Configure and load a page
+        SteamHTMLSurface.set_size(handle, 1280, 720)
+        SteamHTMLSurface.load_url(handle, "https://store.steampowered.com", "")
+        print("  Loading https://store.steampowered.com ...")
+
+    def _on_start_request(self, result):
+        """Fires when the browser begins loading a URL."""
+        url = result.get("url", result.get("pchURL", "?"))
+        print(f"[BROADCAST] StartRequest: {url}")
+        # Allow the navigation to proceed
+        if self._browser_handle is not None:
+            SteamHTMLSurface.allow_start_request(self._browser_handle, True)
+
+    def _on_finished_request(self, result):
+        """Fires when a page finishes loading."""
+        url = result.get("url", result.get("pchURL", "?"))
+        print(f"[BROADCAST] FinishedRequest: {url}")
+
+    def _on_title_changed(self, result):
+        """Fires when the page title changes."""
+        title = result.get("title", result.get("pchTitle", "?"))
+        print(f"[BROADCAST] TitleChanged: {title}")
+
+    def _on_url_changed(self, result):
+        """Fires when the browser navigates to a new URL."""
+        url = result.get("url", result.get("pchURL", "?"))
+        print(f"[BROADCAST] URLChanged: {url}")
+
+    # ------------------------------------------------------------------
+    # Cleanup
+    # ------------------------------------------------------------------
+    def _cleanup(self):
+        if self._browser_handle is not None:
+            SteamHTMLSurface.remove_browser(self._browser_handle)
+            print("Browser removed.")
+        SteamHTMLSurface.shutdown()
+        self.userExit()
 
 
 if __name__ == "__main__":
-    main()
+    demo = HTMLSurfaceDemo()
+    demo.run()

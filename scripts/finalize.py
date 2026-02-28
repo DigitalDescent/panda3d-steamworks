@@ -41,15 +41,16 @@ def find_binary():
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 2:
-        fatal_error("Usage: finalize.py <module-name>")
+    if len(sys.argv) < 2:
+        fatal_error("Usage: finalize.py <module-name> [<dest-package-name>]")
 
     MODULE_NAME = sys.argv[1]
+    DEST_PACKAGE = sys.argv[2] if len(sys.argv) > 2 else MODULE_NAME
     source_file, pdb_file, target_file = find_binary()
     target_pdb_file = MODULE_NAME + ".pdb"
 
     if source_file:
-        dest_folder = join(get_script_dir(), "..", MODULE_NAME)
+        dest_folder = join(get_script_dir(), "..", DEST_PACKAGE)
 
         # Copy the generated DLL
         copyfile(source_file, join(dest_folder, target_file))

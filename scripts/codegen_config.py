@@ -20,7 +20,7 @@ Or just build normally (codegen runs automatically before CMake):
 STEAM_API_JSON = "thirdparty/steamworks/public/steam/steam_api.json"
 
 # Output directory for generated .h and .cpp files
-OUTPUT_DIR = "source"
+OUTPUT_DIR = "source/native"
 
 # ---------------------------------------------------------------------------
 # Default char buffer size for methods that output strings via char* params.

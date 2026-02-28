@@ -1,79 +1,120 @@
 """Interact with the Steam Music player.
 
+Shows how to:
+- Query the current playback state
+- Control playback using play / pause / next
+- Listen for PlaybackStatusHasChanged and VolumeHasChanged broadcasts
+- Use Panda3D tasks for timed actions instead of time.sleep()
+
 The user must have Steam Music enabled and tracks available for these
 calls to have a visible effect.
 """
 
 import sys
-import time
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from panda3d import core
-from panda3d_steamworks import SteamApps, SteamAudioPlaybackStatus, SteamMusic
+from direct.task import Task
 
+from panda3d_steamworks.showbase import SteamShowBase
+from panda3d_steamworks import SteamMusic
 
-def status_label(status):
-    return {
-        SteamAudioPlaybackStatus.AudioPlayback_Undefined: "Undefined",
-        SteamAudioPlaybackStatus.AudioPlayback_Playing: "Playing",
-        SteamAudioPlaybackStatus.AudioPlayback_Paused: "Paused",
-        SteamAudioPlaybackStatus.AudioPlayback_Idle: "Idle",
-    }.get(status, f"Unknown ({status})")
+# Playback status constants (from EAudioPlayback_Status)
+AUDIO_UNDEFINED = 0
+AUDIO_PLAYING = 1
+AUDIO_PAUSED = 2
+AUDIO_IDLE = 3
 
+_STATUS_LABELS = {
+    AUDIO_UNDEFINED: "Undefined",
+    AUDIO_PLAYING: "Playing",
+    AUDIO_PAUSED: "Paused",
+    AUDIO_IDLE: "Idle",
+}
 
-def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+class MusicPlayerDemo(SteamShowBase):
+    """App that drives the Steam Music player and reacts to callbacks."""
 
-    enabled = SteamMusic.is_enabled()
-    playing = SteamMusic.is_playing()
-    status = SteamMusic.get_playback_status()
-    volume = SteamMusic.get_volume()
+    def __init__(self):
+        super().__init__(windowType='none')
 
-    print("Steam Music Player")
-    print(f"  Enabled         : {enabled}")
-    print(f"  Currently playing: {playing}")
-    print(f"  Playback status : {status_label(status)}")
-    print(f"  Volume          : {volume:.0%}")
+        # ------------------------------------------------------------------
+        # Listen for music broadcast callbacks
+        # ------------------------------------------------------------------
+        self.accept("Steam-PlaybackStatusHasChanged", self._on_playback_changed)
+        self.accept("Steam-VolumeHasChanged", self._on_volume_changed)
 
-    if not enabled:
-        print("\nSteam Music is not enabled. Enable it in Steam settings.")
-        SteamApps.shutdown()
-        return
+        # ------------------------------------------------------------------
+        # Print initial state
+        # ------------------------------------------------------------------
+        print("Steam Music Player")
+        print(f"  Enabled         : {SteamMusic.is_enabled()}")
+        print(f"  Currently playing: {SteamMusic.is_playing()}")
+        print(f"  Playback status : {self._status_label(SteamMusic.get_playback_status())}")
+        print(f"  Volume          : {SteamMusic.get_volume():.0%}")
+
+        if not SteamMusic.is_enabled():
+            print("\nSteam Music is not enabled. Enable it in Steam settings.")
+            self.userExit()
+            return
+
+        # ------------------------------------------------------------------
+        # Schedule a sequence of playback actions using Panda3D tasks
+        # ------------------------------------------------------------------
+        self._original_volume = SteamMusic.get_volume()
+
+        sequence = Task.sequence(
+            Task.pause(0.5),
+            self._make_task("Play", SteamMusic.play),
+            Task.pause(2.0),
+            self._make_task("Pause", SteamMusic.pause),
+            Task.pause(1.0),
+            self._make_task("Resume", SteamMusic.play),
+            Task.pause(1.0),
+            self._make_task("Next track", SteamMusic.play_next),
+            Task.pause(1.0),
+            self._make_task("Volume -> 50%", lambda: SteamMusic.set_volume(0.5)),
+            Task.pause(1.5),
+            self._make_task(
+                f"Volume -> {self._original_volume:.0%}",
+                lambda: SteamMusic.set_volume(self._original_volume),
+            ),
+            Task.pause(0.5),
+        )
+        self.taskMgr.add(sequence, "music_demo_sequence")
+
+        self.accept("escape", self.userExit)
+        print("\nRunning playback demo... (press Escape to quit)\n")
 
     # ------------------------------------------------------------------
-    # Playback controls
+    # Helpers
     # ------------------------------------------------------------------
-    print("\nControls demo:")
+    @staticmethod
+    def _status_label(status):
+        return _STATUS_LABELS.get(status, f"Unknown ({status})")
 
-    print("  -> Playing ...")
-    SteamMusic.play()
-    time.sleep(2)
+    @staticmethod
+    def _make_task(label, action):
+        """Return a one-shot task that prints *label* and calls *action*."""
+        def _fn(task):
+            print(f"  -> {label}")
+            action()
+            return task.done
+        return _fn
 
-    print("  -> Pausing ...")
-    SteamMusic.pause()
-    time.sleep(1)
+    # ------------------------------------------------------------------
+    # Broadcast callback handlers
+    # ------------------------------------------------------------------
+    def _on_playback_changed(self, result):
+        status = SteamMusic.get_playback_status()
+        print(f"[BROADCAST] PlaybackStatusHasChanged -> {self._status_label(status)}")
 
-    print("  -> Resuming ...")
-    SteamMusic.play()
-    time.sleep(1)
-
-    print("  -> Next track ...")
-    SteamMusic.play_next()
-    time.sleep(1)
-
-    # Volume adjustment
-    original_vol = SteamMusic.get_volume()
-    SteamMusic.set_volume(0.5)
-    print(f"  -> Volume set to 50%  (was {original_vol:.0%})")
-    time.sleep(1)
-    SteamMusic.set_volume(original_vol)
-    print(f"  -> Volume restored to {original_vol:.0%}")
-
-    SteamApps.shutdown()
+    def _on_volume_changed(self, result):
+        volume = SteamMusic.get_volume()
+        print(f"[BROADCAST] VolumeHasChanged -> {volume:.0%}")
 
 
 if __name__ == "__main__":
-    main()
+    demo = MusicPlayerDemo()
+    demo.run()
