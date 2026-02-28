@@ -219,7 +219,7 @@ jobs:
 
     # ── 9b. Repair wheels (Linux) ──────────────────────────────────────────
     #   PyPI rejects bare "linux_x86_64" tags; auditwheel converts them to
-    #   the appropriate manylinux tag. 
+    #   the appropriate manylinux tag.
     - name: Repair wheel (Linux - auditwheel)
       if: runner.os == 'Linux'
       run: |
