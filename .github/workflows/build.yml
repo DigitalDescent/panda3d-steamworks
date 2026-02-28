@@ -194,15 +194,28 @@ jobs:
     - name: Install Python build tools
       run: pip install build "setuptools>=64" wheel
 
+    - name: Determine version from git
+      id: version
+      shell: bash
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          VERSION="${GITHUB_REF#refs/tags/v}"
+        else
+          VERSION=$(git describe --tags --match 'v*' 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+        fi
+        echo "version=$VERSION"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
     - name: Build wheel
       shell: bash
       env:
+        SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.version.outputs.version }}
         PYTHONPATH: ${{ github.workspace }}/panda3d-src/built
         LD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
         DYLD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
       run: python -m build --wheel
 
-    # ── 9b. Repair wheels (Linux / macOS) ──────────────────────────────────
+    # ── 9b. Repair wheels (Linux) ──────────────────────────────────────────
     #   PyPI rejects bare "linux_x86_64" tags; auditwheel converts them to
     #   the appropriate manylinux tag.  delocate fixes macOS wheels similarly.
     - name: Repair wheel (Linux - auditwheel)
