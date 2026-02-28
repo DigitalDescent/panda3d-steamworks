@@ -259,6 +259,7 @@ BROADCAST_CALLBACKS = [
     "PersonaStateChange_t",
     "GameOverlayActivated_t",
     "GameLobbyJoinRequested_t",
+    "FriendRichPresenceUpdate_t",
 
     # Matchmaking
     "LobbyDataUpdate_t",
@@ -271,6 +272,7 @@ BROADCAST_CALLBACKS = [
     "NewUrlLaunchParameters_t",
 
     # User stats
+    "UserStatsReceived_t",
     "UserStatsStored_t",
     "UserAchievementStored_t",
 
@@ -278,6 +280,42 @@ BROADCAST_CALLBACKS = [
     "ScreenshotRequested_t",
     "ScreenshotReady_t",
 
+    # Music
+    "PlaybackStatusHasChanged_t",
+    "VolumeHasChanged_t",
+
+    # Input
+    "SteamInputDeviceConnected_t",
+    "SteamInputDeviceDisconnected_t",
+    "SteamInputConfigurationLoaded_t",
+
     # UGC / Workshop
     "ItemInstalled_t",
+    "DownloadItemResult_t",
+    "UserSubscribedItemsListChanged_t",
+
+    # HTML Surface
+    "HTML_BrowserReady_t",
+    "HTML_StartRequest_t",
+    "HTML_FinishedRequest_t",
+    "HTML_ChangedTitle_t",
+    "HTML_URLChanged_t",
+    "HTML_CloseBrowser_t",
+    "HTML_NeedsPaint_t",
+
+    # Inventory
+    "SteamInventoryResultReady_t",
+    "SteamInventoryFullUpdate_t",
+    "SteamInventoryDefinitionUpdate_t",
+
+    # Video
+    "GetVideoURLResult_t",
+    "GetOPFSettingsResult_t",
+
+    # Parental settings
+    "SteamParentalSettingsChanged_t",
+
+    # Remote Play
+    "SteamRemotePlaySessionConnected_t",
+    "SteamRemotePlaySessionDisconnected_t",
 ]
