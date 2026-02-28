@@ -199,7 +199,7 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}/panda3d-src/built
         LD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
         DYLD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
-      run: python -m build --wheel --no-isolation
+      run: python -m build --wheel
 
     # ── 10. Upload ─────────────────────────────────────────────────────────
     - name: Upload wheel artifact

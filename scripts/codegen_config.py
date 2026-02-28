@@ -187,6 +187,25 @@ INTERFACE_OVERRIDES = {
 }
 
 # =========================================================================
+# Enum Configuration
+# =========================================================================
+
+# Enable generation of enum wrapper classes.
+# Each Steam enum (e.g. EFriendFlags) becomes a C++ class with PUBLISHED
+# constants that interrogate exposes to Python.
+#
+#   from panda3d_steamworks import SteamFriendFlags
+#   SteamFriendFlags.k_EFriendFlagImmediate   # 4
+ENABLE_ENUMS = True
+
+# Prefix prepended to enum class names.
+# EFriendFlags -> strip leading 'E' -> FriendFlags -> SteamFriendFlags
+ENUM_CLASS_PREFIX = "Steam"
+
+# Enums to skip entirely (set of enum names from steam_api.json).
+SKIP_ENUMS: set = set()
+
+# =========================================================================
 # Async & Callback Configuration
 # =========================================================================
 

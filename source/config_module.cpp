@@ -8,6 +8,7 @@
 #include "steamApps.h"
 #include "steamCallbackManager.h"
 #include "steamController.h"
+#include "steamEnums.h"
 #include "steamFriends.h"
 #include "steamGameServer.h"
 #include "steamGameServerStats.h"

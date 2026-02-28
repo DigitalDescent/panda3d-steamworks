@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from panda3d import core
 from panda3d_steamworks import (
     SteamApps,
     SteamNetworking,
