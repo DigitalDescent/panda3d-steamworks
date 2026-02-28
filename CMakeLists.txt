@@ -430,8 +430,10 @@ if(WIN32)
 #   # Eventually link core.pyd?
 else()
   if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    # macOS uses SHARED libraries, so set SHARED linker flags
-    set(CMAKE_SHARED_LINKER_FLAGS ${PANDA_CORE_PATH})
+    # On macOS, Python extension modules (.so) are Mach-O bundles (MH_BUNDLE),
+    # which cannot be linked against directly.  Use -undefined dynamic_lookup
+    # so unresolved symbols from core.so are resolved at load time instead.
+    set(CMAKE_SHARED_LINKER_FLAGS "-undefined dynamic_lookup")
   else()
     set(CMAKE_MODULE_LINKER_FLAGS ${PANDA_CORE_PATH})
   endif()
