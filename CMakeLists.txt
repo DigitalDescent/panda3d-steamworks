@@ -366,12 +366,12 @@ add_definitions("/DPB_MODULE=${PROJECT_NAME}")
 add_definitions("/DPB_CFG_MODULE=${PROJECT_NAME}")
 
 # Collect sources for compiling
-file(GLOB_RECURSE SOURCES source/*.cpp source/*.cxx source/*.I source/*.hpp source/*.h source/*.cc source/*.c)
-include_directories("source/")
+file(GLOB_RECURSE SOURCES source/native/*.cpp source/native/*.cxx source/native/*.I source/native/*.hpp source/native/*.h source/native/*.cc source/native/*.c)
+include_directories("source/native/")
 set(SOURCES ${SOURCES_H} ${SOURCES})
 
 # Collect subdirs for compiling
-file(GLOB POSSIBLE_DIRS RELATIVE ${CMAKE_CURRENT_LIST_DIR} source/*)
+file(GLOB POSSIBLE_DIRS RELATIVE ${CMAKE_CURRENT_LIST_DIR} source/native/*)
 foreach(PDIR ${POSSIBLE_DIRS})
   if (IS_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/${PDIR})
     include_directories("${PDIR}")
@@ -430,8 +430,10 @@ if(WIN32)
 #   # Eventually link core.pyd?
 else()
   if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    # macOS uses SHARED libraries, so set SHARED linker flags
-    set(CMAKE_SHARED_LINKER_FLAGS ${PANDA_CORE_PATH})
+    # On macOS, Python extension modules (.so) are Mach-O bundles (MH_BUNDLE),
+    # which cannot be linked against directly.  Use -undefined dynamic_lookup
+    # so unresolved symbols from core.so are resolved at load time instead.
+    set(CMAKE_SHARED_LINKER_FLAGS "-undefined dynamic_lookup")
   else()
     set(CMAKE_MODULE_LINKER_FLAGS ${PANDA_CORE_PATH})
   endif()
@@ -441,7 +443,7 @@ endif()
 add_custom_command(
     TARGET ${PROJECT_NAME}
     POST_BUILD
-    COMMAND "${PYTHON_EXECUTABLE}" "-B" "${CMAKE_CURRENT_LIST_DIR}/scripts/finalize.py" "${PROJECT_NAME}"
+    COMMAND "${PYTHON_EXECUTABLE}" "-B" "${CMAKE_CURRENT_LIST_DIR}/scripts/finalize.py" "${PROJECT_NAME}" "panda3d_steamworks"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
 
 # Make shared library paths absolute on macOS
@@ -460,7 +462,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_command(
       TARGET ${PROJECT_NAME}
       POST_BUILD
-      COMMAND "install_name_tool" "-change" "@loader_path/../lib/lib${lib}.${PANDA_SHORT_VERSION}.dylib" "${PANDA_LIB_PATH}/lib${lib}.dylib" "${PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+      COMMAND "install_name_tool" "-change" "@loader_path/../lib/lib${lib}.${PANDA_SHORT_VERSION}.dylib" "${PANDA_LIB_PATH}/lib${lib}.dylib" "$<TARGET_FILE:${PROJECT_NAME}>"
       WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
   endforeach()
 endif()

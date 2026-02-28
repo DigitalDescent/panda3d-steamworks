@@ -279,7 +279,7 @@ def generate_callback_manager_header(banner):
     lines.append("#pragma once")
     lines.append("")
     lines.append('#include "pandabase.h"')
-    lines.append('#include "steamPython.h"')
+    lines.append('#include "steamPython_bindings.h"')
     lines.append("#include <string>")
     lines.append("")
     lines.append("/" * 68)
@@ -327,7 +327,7 @@ def generate_callback_manager_source(async_struct_names,
     - ``SteamCallbackManager`` implementation
     """
     lines = [banner, ""]
-    lines.append('#include "steamCallbackManager.h"')
+    lines.append('#include "steamCallbackManager_bindings.h"')
     lines.append("")
     lines.append("// Guard implementation from interrogate.")
     lines.append("#ifndef CPPPARSER")

@@ -1,0 +1,10 @@
+# Interrogate Bindings
+interrogate*.cpp
+interrogate.in
+
+# Generated source files (codegen.py outputs *_bindings.{h,cpp})
+*_bindings.cpp
+*_bindings.h
+
+# config_module.cpp is also generated but keeps its name
+config_module.cpp

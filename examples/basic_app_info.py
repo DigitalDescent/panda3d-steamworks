@@ -5,13 +5,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
+from panda3d_steamworks.showbase import SteamShowBase
 from panda3d_steamworks import SteamApps
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise - is Steam running and steam_appid.txt present?")
-        return
+    base = SteamShowBase(windowType='none')
 
     print("Steam initialised successfully!")
     print(f"  Build ID      : {SteamApps.get_app_build_id()}")
@@ -25,7 +24,7 @@ def main():
     else:
         print("  Beta branch    : (none)")
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

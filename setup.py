@@ -31,6 +31,7 @@ import panda3d.core  # noqa: E402
 # Build configuration - edit these instead of a config file
 # ---------------------------------------------------------------------------
 MODULE_NAME = "panda3d_steamworks"
+NATIVE_NAME = "native"           # Name of the compiled extension module
 GENERATE_PDB = True          # Emit .pdb debug symbols (Windows only)
 OPTIMIZE = 3                 # Must match the Panda3D SDK build (1-4)
 VERBOSE_IGATE = 0            # Interrogate verbosity: 0=quiet, 1=verbose, 2=very verbose
@@ -41,9 +42,26 @@ REQUIRE_LIB_FREETYPE = False # Require Freetype library
 # Paths
 # ---------------------------------------------------------------------------
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+SOURCE_DIR = os.path.join(ROOT_DIR, "source")
 STEAMWORKS_REDIST = os.path.join(
     ROOT_DIR, "thirdparty", "steamworks", "redistributable_bin"
 )
+
+
+def _ensure_pkg_dir():
+    """Create the ``panda3d_steamworks`` package directory and copy every
+    ``.py`` file from ``source/`` into it so setuptools can discover the
+    package.  This keeps the repo clean (``panda3d_steamworks/`` is
+    generated, not committed)."""
+    pkg = os.path.join(ROOT_DIR, MODULE_NAME)
+    os.makedirs(pkg, exist_ok=True)
+    import glob
+    for py_file in glob.glob(os.path.join(SOURCE_DIR, "*.py")):
+        shutil.copy2(py_file, pkg)
+
+
+# Generate the package directory early so setuptools can discover the package.
+_ensure_pkg_dir()
 
 # Make the helper scripts importable
 sys.path.insert(0, os.path.join(ROOT_DIR, "scripts"))
@@ -90,8 +108,8 @@ def _pkg_dir():
 def _built_module_path():
     """Return the path to the module built by the CMake step (package dir)."""
     if sys.platform == "win32":
-        return os.path.join(_pkg_dir(), "panda3d_steamworks.pyd")
-    return os.path.join(_pkg_dir(), "panda3d_steamworks.so")
+        return os.path.join(_pkg_dir(), NATIVE_NAME + ".pyd")
+    return os.path.join(_pkg_dir(), NATIVE_NAME + ".so")
 
 
 def _steam_shared_libs():
@@ -169,7 +187,7 @@ def _run_cmake(config):
     cmake_args = [
         "-DCMAKE_BUILD_TYPE=" + configuration,
         "-DPYTHON_EXECUTABLE:STRING=" + sys.executable,
-        "-DPROJECT_NAME:STRING=" + config["module_name"],
+        "-DPROJECT_NAME:STRING=" + config["native_name"],
     ]
 
     lib_prefix = "lib" if is_windows() else ""
@@ -308,7 +326,10 @@ class CMakeBuild(_build_ext):
         super().run()
 
     def build_extension(self, ext):
-        # ---- 0. Run code generation from steam_api.json --------------------
+        # ---- 0a. Copy Python source files into the package directory -------
+        _ensure_pkg_dir()
+
+        # ---- 0b. Run code generation from steam_api.json -------------------
         from codegen import run_codegen
         print("Running Steamworks code generation …")
         run_codegen(root_dir=ROOT_DIR)
@@ -316,6 +337,7 @@ class CMakeBuild(_build_ext):
         # ---- 1. Build config dict from top-of-file constants ----------------
         config = {
             "module_name": MODULE_NAME,
+            "native_name": NATIVE_NAME,
             "generate_pdb": GENERATE_PDB,
             "optimize": OPTIMIZE,
             "verbose_igate": VERBOSE_IGATE,
@@ -368,9 +390,9 @@ class CMakeBuild(_build_ext):
 
         # ---- 6. Copy PDB if present (debug info, Windows only) --------------
         if sys.platform == "win32":
-            pdb = os.path.join(pkg, "panda3d_steamworks.pdb")
+            pdb = os.path.join(pkg, NATIVE_NAME + ".pdb")
             if os.path.isfile(pdb):
-                shutil.copy2(pdb, os.path.join(dest_dir, "panda3d_steamworks.pdb"))
+                shutil.copy2(pdb, os.path.join(dest_dir, NATIVE_NAME + ".pdb"))
 
 
 # ---------------------------------------------------------------------------
@@ -388,9 +410,9 @@ class BinaryDistribution(Distribution):
 
 setup(
     ext_modules=[
-        # The extension is placed *inside* the panda3d_steamworks package so
-        # __init__.py can do ``from .panda3d_steamworks import *``.
-        CMakeExtension("panda3d_steamworks.panda3d_steamworks"),
+        # The native extension is placed *inside* the panda3d_steamworks
+        # package so __init__.py can do ``from panda3d_steamworks.native import *``.
+        CMakeExtension("panda3d_steamworks.native"),
     ],
     cmdclass={"build_ext": CMakeBuild},
     distclass=BinaryDistribution,

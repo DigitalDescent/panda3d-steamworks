@@ -5,13 +5,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
+from panda3d_steamworks.showbase import SteamShowBase
 from panda3d_steamworks import SteamApps
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     print("Ownership status:")
     print(f"  Subscribed           : {SteamApps.is_subscribed()}")
@@ -21,7 +20,7 @@ def main():
     print(f"  Free weekend         : {SteamApps.is_subscribed_from_free_weekend()}")
     print(f"  Family sharing       : {SteamApps.is_subscribed_from_family_sharing()}")
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

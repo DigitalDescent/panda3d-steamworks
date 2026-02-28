@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
+from panda3d_steamworks.showbase import SteamShowBase
 from panda3d_steamworks import SteamApps
 
 # Replace with your actual DLC App IDs
@@ -12,9 +13,7 @@ EXAMPLE_DLC_IDS = [1234, 5678]
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     dlc_count = SteamApps.get_dlc_count()
     print(f"User owns {dlc_count} DLC(s).\n")
@@ -28,7 +27,7 @@ def main():
         #     SteamApps.install_dlc(dlc_id)
         #     print(f"    -> Install requested for DLC {dlc_id}")
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

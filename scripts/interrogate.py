@@ -131,7 +131,7 @@ def interrogate_module():
 if __name__ == "__main__":
 
     # Change into the source directory
-    source_dir = join(get_script_dir(), "../source/")
+    source_dir = join(get_script_dir(), "../source/native/")
     chdir(source_dir)
 
     interrogate()

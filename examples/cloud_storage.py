@@ -13,15 +13,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamRemoteStorage
+from panda3d_steamworks.showbase import SteamShowBase
+from panda3d_steamworks import SteamRemoteStorage
 
 CLOUD_FILE = "settings.json"
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     # ------------------------------------------------------------------
     # Cloud status
@@ -76,7 +75,7 @@ def main():
     # ------------------------------------------------------------------
     # SteamRemoteStorage.file_delete(CLOUD_FILE)
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

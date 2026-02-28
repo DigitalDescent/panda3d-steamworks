@@ -11,13 +11,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamParentalSettings
+from panda3d_steamworks.showbase import SteamShowBase
+from panda3d_steamworks import SteamParentalSettings
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     # ------------------------------------------------------------------
     # Parental lock status
@@ -39,7 +38,7 @@ def main():
     print(f"  Blocked       : {blocked}")
     print(f"  In block list : {in_list}")
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":

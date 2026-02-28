@@ -48,12 +48,12 @@ else:
     )
 
 # ---------------------------------------------------------------------------
-# Import everything from the compiled extension module so that users can
-# simply write:
+# Import everything from the compiled native extension module so that users
+# can simply write:
 #
 #     from panda3d_steamworks import SteamApps
 #
 # ---------------------------------------------------------------------------
-from panda3d_steamworks.panda3d_steamworks import *  # noqa: F401, F403, E402
+from panda3d_steamworks.native import *  # noqa: F401, F403, E402
 
 del os, sys, _pkg_dir

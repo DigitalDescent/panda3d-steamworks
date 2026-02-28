@@ -13,13 +13,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from panda3d import core
-from panda3d_steamworks import SteamApps, SteamMatchmaking, SteamUser
+from panda3d_steamworks import SteamMatchmaking, SteamUser
+from panda3d_steamworks.showbase import SteamShowBase
 
 
 def main():
-    if not SteamApps.init():
-        print("Steam failed to initialise.")
-        return
+    base = SteamShowBase(windowType='none')
 
     # ------------------------------------------------------------------
     # Favourite / history servers
@@ -76,7 +75,7 @@ def main():
     # Leave the lobby:
     #   SteamMatchmaking.leave_lobby(lobby_id)
 
-    SteamApps.shutdown()
+    base.userExit()
 
 
 if __name__ == "__main__":
