@@ -1,0 +1,44 @@
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'docs/**'
+      - '*.md'
+
+examples:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'examples/**'
+
+build:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'CMakeLists.txt'
+      - 'setup.py'
+      - 'pyproject.toml'
+      - 'MANIFEST.in'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/**'
+
+native:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'source/native/**'
+
+python:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'source/**/*.py'
+      - '__init__.py'
+
+codegen:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'scripts/**'
+
+thirdparty:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'thirdparty/**'

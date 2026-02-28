@@ -201,6 +201,29 @@ jobs:
         DYLD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
       run: python -m build --wheel
 
+    # ── 9b. Repair wheels (Linux / macOS) ──────────────────────────────────
+    #   PyPI rejects bare "linux_x86_64" tags; auditwheel converts them to
+    #   the appropriate manylinux tag.  delocate fixes macOS wheels similarly.
+    - name: Repair wheel (Linux - auditwheel)
+      if: runner.os == 'Linux'
+      run: |
+        pip install auditwheel patchelf
+        mkdir -p dist-repaired
+        auditwheel repair dist/*.whl \
+          --plat manylinux_2_35_x86_64 \
+          -w dist-repaired
+        rm -rf dist
+        mv dist-repaired dist
+
+    - name: Repair wheel (macOS - delocate)
+      if: runner.os == 'macOS'
+      run: |
+        pip install delocate
+        mkdir -p dist-repaired
+        delocate-wheel -w dist-repaired dist/*.whl
+        rm -rf dist
+        mv dist-repaired dist
+
     # ── 10. Upload ─────────────────────────────────────────────────────────
     - name: Upload wheel artifact
       uses: actions/upload-artifact@v4
