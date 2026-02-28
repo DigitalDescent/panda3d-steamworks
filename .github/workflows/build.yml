@@ -209,8 +209,12 @@ jobs:
       run: |
         pip install auditwheel patchelf
         mkdir -p dist-repaired
+        # Use the glibc version from the build host (Ubuntu 24.04 → glibc 2.39)
+        GLIBC_VER=$(ldd --version | head -1 | grep -oP '\d+\.\d+$')
+        MANYLINUX="manylinux_${GLIBC_VER//./_}_x86_64"
+        echo "Targeting platform tag: $MANYLINUX"
         auditwheel repair dist/*.whl \
-          --plat manylinux_2_35_x86_64 \
+          --plat "$MANYLINUX" \
           -w dist-repaired
         rm -rf dist
         mv dist-repaired dist
