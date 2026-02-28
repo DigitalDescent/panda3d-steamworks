@@ -58,7 +58,7 @@ class InventoryDemo(SteamShowBase):
         print("Item drop heartbeat sent.")
 
         self.accept("escape", self.userExit)
-        print("\nWaiting for inventory callbacks... (press Escape to quit)\n")
+        print("\nWaiting for inventory callbacks... (press Ctrl + C to quit)\n")
 
     # ------------------------------------------------------------------
     # Periodic heartbeat task

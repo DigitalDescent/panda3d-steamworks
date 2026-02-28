@@ -56,7 +56,7 @@ class HTMLSurfaceDemo(SteamShowBase):
         print("CreateBrowser requested (async) — waiting for callback...")
 
         self.accept("escape", self._cleanup)
-        print("Press Escape to quit.\n")
+        print("press Ctrl + C to quit.\n")
 
     # ------------------------------------------------------------------
     # Callback handlers

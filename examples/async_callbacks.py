@@ -75,7 +75,7 @@ class AsyncDemo(SteamShowBase):
         else:
             print("  Failed to create lobby.")
 
-        print("\nWaiting for callbacks... (press Escape to quit)\n")
+        print("\nWaiting for callbacks... (press Ctrl + C to quit)\n")
         self.accept("escape", self.userExit)
 
     # ------------------------------------------------------------------

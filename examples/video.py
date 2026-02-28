@@ -49,7 +49,7 @@ class VideoDemo(SteamShowBase):
         print(f"Requested OPF settings for app {self._app_id} (async).")
 
         self.accept("escape", self.userExit)
-        print("\nWaiting for callbacks... (press Escape to quit)\n")
+        print("\nWaiting for callbacks... (press Ctrl + C to quit)\n")
 
     # ------------------------------------------------------------------
     # Broadcast callback handlers

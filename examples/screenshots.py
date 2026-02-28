@@ -47,7 +47,7 @@ class ScreenshotDemo(SteamShowBase):
         SteamScreenshots.trigger_screenshot()
 
         self.accept("escape", self._cleanup)
-        print("\nWaiting for callbacks... (press Escape to quit)\n")
+        print("\nWaiting for callbacks... (press Ctrl + C to quit)\n")
 
     # ------------------------------------------------------------------
     # Broadcast callback handlers

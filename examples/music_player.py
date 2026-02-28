@@ -85,7 +85,7 @@ class MusicPlayerDemo(SteamShowBase):
         self.taskMgr.add(sequence, "music_demo_sequence")
 
         self.accept("escape", self.userExit)
-        print("\nRunning playback demo... (press Escape to quit)\n")
+        print("\nRunning playback demo... (press Ctrl + C to quit)\n")
 
     # ------------------------------------------------------------------
     # Helpers

@@ -44,7 +44,7 @@ class AchievementsDemo(SteamShowBase):
         SteamUserStats.request_current_stats()
 
         self.accept("escape", self.userExit)
-        print("Waiting for callbacks... (press Escape to quit)\n")
+        print("Waiting for callbacks... (press Ctrl + C to quit)\n")
 
     # ------------------------------------------------------------------
     # Broadcast callback handlers

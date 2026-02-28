@@ -81,7 +81,7 @@ class WorkshopDemo(SteamShowBase):
             # SteamUGC.subscribe_item(WORKSHOP_ITEM_ID)
 
         self.accept("escape", self.userExit)
-        print("\nWaiting for callbacks... (press Escape to quit)\n")
+        print("\nWaiting for callbacks... (press Ctrl + C to quit)\n")
 
     # ------------------------------------------------------------------
     # Broadcast callback handlers

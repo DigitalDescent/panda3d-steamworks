@@ -50,7 +50,7 @@ class RichPresenceDemo(SteamShowBase):
 
         self.accept("escape", self._cleanup)
         print("\nRich Presence is now visible to friends.")
-        print("Score updates every 5 seconds. Press Escape to quit.\n")
+        print("Score updates every 5 seconds. press Ctrl + C to quit.\n")
 
     # ------------------------------------------------------------------
     # Periodic task

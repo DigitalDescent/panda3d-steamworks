@@ -68,7 +68,7 @@ class OverlayDemo(SteamShowBase):
         SteamFriends.activate_game_overlay("Achievements")
 
         self.accept("escape", self.userExit)
-        print("\nWaiting for overlay events... (press Escape to quit)\n")
+        print("\nWaiting for overlay events... (press Ctrl + C to quit)\n")
 
     def _on_overlay(self, result):
         active = result["active"]

@@ -61,7 +61,7 @@ class InputDemo(SteamShowBase):
         self.taskMgr.add(self._poll_input, "steam_input_poll")
 
         self.accept("escape", self._cleanup)
-        print("\nPolling for input... (press Escape to quit)\n")
+        print("\nPolling for input... (press Ctrl + C to quit)\n")
 
     # ------------------------------------------------------------------
     # Per-frame polling task
