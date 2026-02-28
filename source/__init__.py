@@ -24,12 +24,23 @@ if sys.platform == "win32":
     if hasattr(os, "add_dll_directory"):
         # Python 3.8+
         os.add_dll_directory(_pkg_dir)
-        # Also register Panda3D's DLL directory so the extension can find
-        # libp3dtool, libp3dtoolconfig, etc. when not using ppython.
+        # Register Panda3D's DLL directories so the extension can find
+        # libpanda, libp3dtool, libp3dtoolconfig, etc. when not using ppython.
+        # The .pyd modules live in the panda3d/ package directory, but the
+        # actual runtime DLLs live in a sibling bin/ directory (SDK installs)
+        # or sometimes alongside the .pyd files (pip wheel installs).
         try:
             import panda3d.core  # noqa: F401
             _p3d_dir = os.path.dirname(os.path.abspath(panda3d.core.__file__))
             os.add_dll_directory(_p3d_dir)
+            # SDK / source-build layout: DLLs are in <prefix>/bin/
+            _p3d_bin = os.path.join(os.path.dirname(_p3d_dir), "bin")
+            if os.path.isdir(_p3d_bin):
+                os.add_dll_directory(_p3d_bin)
+            # Also try <prefix>/lib/ (some build layouts put DLLs there)
+            _p3d_lib = os.path.join(os.path.dirname(_p3d_dir), "lib")
+            if os.path.isdir(_p3d_lib):
+                os.add_dll_directory(_p3d_lib)
         except Exception:
             pass
     else:

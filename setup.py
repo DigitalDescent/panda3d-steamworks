@@ -200,27 +200,13 @@ def _run_cmake(config):
         )
 
     # Interrogate library detection
-    if PandaSystem.get_major_version() > 1 or PandaSystem.get_minor_version() > 9:
-        interrogatedb_lib = lib_prefix + "p3interrogatedb"
-        # Determine the actual library filename on disk for the existence check.
-        # On Windows: libp3interrogatedb.lib   (lib_prefix="lib", ext=".lib")
-        # On macOS:   libp3interrogatedb.dylib  (file prefix="lib", ext=".dylib")
-        # On Linux:   libp3interrogatedb.so     (file prefix="lib", ext=".so")
-        if is_windows():
-            check_filename = interrogatedb_lib + ".lib"
-        elif is_macos():
-            check_filename = "libp3interrogatedb.dylib"
-        else:
-            check_filename = "libp3interrogatedb.so"
-        if os.path.isfile(join_abs(get_panda_lib_path(), check_filename)):
-            cmake_args.append("-DINTERROGATE_LIB:STRING=" + interrogatedb_lib)
-        else:
-            cmake_args.append("-DINTERROGATE_LIB:STRING=" + lib_prefix + "panda")
-    else:
-        if not os.path.isfile(join_abs(get_panda_lib_path(), "core.lib")):
-            cmake_args.append("-DINTERROGATE_LIB:STRING=" + lib_prefix + "panda")
-        else:
-            cmake_args.append("-DINTERROGATE_LIB:STRING=core")
+    # The interrogate runtime symbols (Dtool_*) are re-exported by libpanda
+    # in official SDK and pip-installed Panda3D.  When building from source,
+    # a separate libp3interrogatedb may exist, but linking against it
+    # produces wheels that cannot load on end-user machines where only the
+    # SDK / pip package is installed.  Always use libpanda so the wheel is
+    # portable.
+    cmake_args.append("-DINTERROGATE_LIB:STRING=" + lib_prefix + "panda")
 
     # Generator / architecture
     if is_windows():
