@@ -6,6 +6,7 @@ Common functions for the build system
 
 from __future__ import print_function
 
+import os
 import locale
 import sys
 import subprocess
@@ -427,7 +428,16 @@ def have_freetype():
 
 
 def get_win_thirdparty_dir():
-    """ Returns the path of the thirdparty directory, windows only """
+    """ 
+    Returns the path of the thirdparty directory, windows only.
+    Checks the PANDA3D_THIRDPARTY environment variable first (useful in CI). 
+    """
+
+    # Allow explicit override via environment variable
+    env_tp = os.environ.get("PANDA3D_THIRDPARTY", "").strip()
+    if env_tp and isdir(env_tp):
+        return realpath(env_tp)
+
     msvc_suffix = get_panda_msvc_version().suffix
 
     # The thirdparty directory is named "vc14" for example instead of "vc140"
@@ -447,7 +457,9 @@ def get_win_thirdparty_dir():
 
     error_msg = ("The thirdparty directory could not be found. You can get it from "
                  "https://www.panda3d.org/forums/viewtopic.php?f=9&t=18775 by downloading "
-                 "a prebuilt version or by compiling it yourself.")
+                 "a prebuilt version or by compiling it yourself."
+                 " You can also set the PANDA3D_THIRDPARTY environment variable to the"
+                 " win-libs directory path.")
     return first_existing_path(possible_dirs, base_dir=get_panda_sdk_path(), on_error=error_msg)
 
 

@@ -151,33 +151,21 @@ jobs:
         # bin/ has interrogate + runtime DLLs (Windows)
         echo "$GITHUB_WORKSPACE/panda3d-src/built/bin" >> "$GITHUB_PATH"
 
-    - name: Create thirdparty compatibility junctions (Windows)
+    - name: Locate thirdparty win-libs directory (Windows)
       if: runner.os == 'Windows'
+      id: thirdparty
       shell: powershell
       run: |
-        # get_win_thirdparty_dir() searches for "thirdparty/win-libs" relative
-        # to the SDK path (panda3d-src/built/).  The actual thirdparty folder
-        # is panda3d-src/thirdparty/win-libs-vc14-x64.
-        # Create one direct junction at the exact searched path.
-        $realTP = (Resolve-Path "panda3d-src\thirdparty\win-libs-vc14-x64").Path
-        $builtTPDir = "panda3d-src\built\thirdparty"
-        $link = "$builtTPDir\win-libs"
-
-        # Ensure the built/thirdparty directory exists (as a real dir, not a junction)
-        if (Test-Path $builtTPDir) {
-          # If it's a junction from a previous run, remove it first
-          $item = Get-Item $builtTPDir -Force
-          if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-            $item.Delete()
-          }
+        # Dynamically find the win-libs* directory inside the Panda3D thirdparty.
+        # The name varies by SDK version (e.g. win-libs-vc14-x64, win-libs-vc143-x64).
+        $candidates = Get-ChildItem -Path "panda3d-src\thirdparty" -Directory -Filter "win-libs*" -ErrorAction SilentlyContinue
+        if ($candidates.Count -eq 0) {
+          Write-Error "No win-libs* directory found under panda3d-src/thirdparty!"
+          exit 1
         }
-        New-Item -ItemType Directory -Force -Path $builtTPDir | Out-Null
-
-        # Create the single junction: built/thirdparty/win-libs → real thirdparty dir
-        if (!(Test-Path $link)) {
-          New-Item -ItemType Junction -Path $link -Target $realTP | Out-Null
-        }
-        Write-Host "Junction: $link -> $realTP"
+        $tp = $candidates[0].FullName
+        Write-Host "Found thirdparty dir: $tp"
+        echo "dir=$tp" >> $env:GITHUB_OUTPUT
 
     # ── 9. Build the panda3d-steamworks wheel ──────────────────────────────
     - name: Install Python build tools
@@ -215,6 +203,7 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}/panda3d-src/built
         LD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
         DYLD_LIBRARY_PATH: ${{ github.workspace }}/panda3d-src/built/lib
+        PANDA3D_THIRDPARTY: ${{ steps.thirdparty.outputs.dir }}
       run: python -m build --wheel
 
     # ── 9b. Repair wheels (Linux) ──────────────────────────────────────────
