@@ -12,7 +12,8 @@
 
 ////////////////////////////////////////////////////////////////////
 //       Class : SteamNetworkConnectionInfo
-// Description : Represents a Valve GameSockets connection.
+// Description : Holds metadata about a Valve GameSockets connection,
+//               including state, end reason, listen socket handle, and address.
 ////////////////////////////////////////////////////////////////////
 class EXPORT_CLASS SteamNetworkConnectionInfo : public ReferenceCount {
 PUBLISHED:

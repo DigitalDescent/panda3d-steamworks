@@ -41,8 +41,8 @@ PUBLISHED:
     virtual ~SteamNetworkManager() = default;
     static SteamNetworkManager *get_global_ptr();
 
-    SteamNetworkConnectionHandle create_ip_socket(int port);
-    SteamNetworkConnectionHandle create_steam_id_socket(int port);
+    SteamNetworkListenSocketHandle create_ip_socket(int port);
+    SteamNetworkListenSocketHandle create_steam_id_socket(int port);
     SteamNetworkConnectionHandle connect_by_ip_address(const NetAddress &address);
     SteamNetworkConnectionHandle connect_by_steam_id(const std::string &steam_id);
     bool get_connection_info(SteamNetworkConnectionHandle connection, SteamNetworkConnectionInfo &info);

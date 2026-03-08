@@ -10,13 +10,11 @@
 #include "steamEnums_bindings.h"
 #include "steamNetworkConnectionInfo.h"
 #include "steamNetworkMessage.h"
-#include "pStatCollector.h"
 
-#include <steam/isteamnetworkingutils.h>
 
 TypeHandle SteamNetworkManager::_type_handle;
 SteamNetworkManager *SteamNetworkManager::_global_ptr = nullptr;
-static SteamNetworkManager *_cast_global_ptr = nullptr;
+
 
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamNetworkManager::SteamNetworkManager
@@ -39,7 +37,7 @@ SteamNetworkManager::SteamNetworkManager() {
 //     Function: SteamNetworkManager::get_global_ptr
 //       Access: Published, Static
 //  Description: Returns the global SteamNetworkManager pointer,
-//               or nullptr if none has been created.
+//               creating one if none has been created yet.
 ////////////////////////////////////////////////////////////////////
 SteamNetworkManager *SteamNetworkManager::get_global_ptr() {
     if (!_global_ptr) {
