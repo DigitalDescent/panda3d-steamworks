@@ -67,10 +67,7 @@ class SteamHTMLSurfaceTexture(DirectObject):
             SteamHTMLSurface.remove_browser(self.browser_handle)
             self.browser_handle = None
 
-        try:
-            shutil.rmtree(self._temp_dir)
-        except OSError:
-            pass
+        shutil.rmtree(self._temp_dir)
         self._release_surface_init()
 
     def set_browser_size(self, width: int, height: int) -> None:
