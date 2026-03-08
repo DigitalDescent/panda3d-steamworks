@@ -2,12 +2,12 @@
 
 Demonstrates the SteamNetworkManager class which wraps the
 ISteamNetworkingSockets API into a Panda3D-friendly interface with
-Datagram-based messaging and an event queue.
+datagram-based messaging and an event queue.
 
-Run with --server to host, or --client <ip:port> to connect.
+This example runs a combined server and client within a single process
+using the SteamNetworkManager. Simply run:
 
-    ppython examples/network_manager.py --server
-    ppython examples/network_manager.py --client 127.0.0.1:27015
+    ppython examples/network_manager.py
 """
 
 import sys
@@ -22,13 +22,13 @@ from panda3d_steamworks import (
     SteamConstants,
     SteamNetworkingConnectionState,
     SteamNetworkManager,
-    SteamNetworkConnectionInfo,
+
     SteamNetworkMessage,
 )
 
 # Convenience aliases for send flags
 SEND_RELIABLE = SteamConstants.k_nSteamNetworkingSend_Reliable
-SEND_UNRELIABLE = SteamConstants.k_nSteamNetworkingSend_Unreliable
+
 
 # Connection state constants
 STATE_NONE = SteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_None

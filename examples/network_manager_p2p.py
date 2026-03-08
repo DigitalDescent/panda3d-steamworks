@@ -18,14 +18,14 @@ from panda3d_steamworks import (
     SteamConstants,
     SteamNetworkingConnectionState,
     SteamNetworkManager,
-    SteamNetworkConnectionInfo,
+
     SteamNetworkMessage,
     SteamUser,
 )
 
 # Convenience aliases for send flags
 SEND_RELIABLE = SteamConstants.k_nSteamNetworkingSend_Reliable
-SEND_UNRELIABLE = SteamConstants.k_nSteamNetworkingSend_Unreliable
+
 
 # Connection state constants
 STATE_NONE = SteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_None
