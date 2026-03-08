@@ -20,7 +20,9 @@ from panda3d_steamworks import SteamHTMLSurface
 
 
 class SteamHTMLSurfaceTexture(DirectObject):
-    """Owns a Steam HTML browser and exposes it as a Panda3D texture."""
+    """
+    Owns a Steam HTML browser and exposes it as a Panda3D texture.
+    """
 
     _surface_ref_count = 0
 
@@ -56,18 +58,17 @@ class SteamHTMLSurfaceTexture(DirectObject):
         SteamHTMLSurface.create_browser(user_agent, user_css, self._on_browser_ready)
 
     def destroy(self) -> None:
-        """Destroy browser handle, temp files, and event hooks."""
+        """
+        Destroy browser handle, temp files, and event hooks.
+        """
+
         self.ignore_all()
 
         if self.browser_handle is not None:
             SteamHTMLSurface.remove_browser(self.browser_handle)
             self.browser_handle = None
 
-        try:
-            shutil.rmtree(self._temp_dir)
-        except OSError:
-            pass
-
+        shutil.rmtree(self._temp_dir)
         self._release_surface_init()
 
     def set_browser_size(self, width: int, height: int) -> None:
@@ -176,7 +177,9 @@ class SteamHTMLSurfaceTexture(DirectObject):
 
 
 class SteamHtmlSurfaceRenderer(DirectObject):
-    """Renders `SteamHTMLSurfaceTexture` onto an `aspect2d` card."""
+    """
+    Renders `SteamHTMLSurfaceTexture` onto an `aspect2d` card.
+    """
 
     def __init__(
         self,
