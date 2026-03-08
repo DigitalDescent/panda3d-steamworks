@@ -224,7 +224,19 @@ def _gen_dict_builder(lines, indent, struct_data, typedefs, enums,
         dict_key = field_to_dict_key(fname)
         src = "{}->{}".format(src_var, fname)
 
-        py_expr = _resolve_field_py_expr(ftype, src, typedefs, enums)
+        # HTML_NeedsPaint_t.pBGRA is a raw pixel buffer, not text.
+        # Marshal as bytes with explicit size (wide * tall * 4).
+        if struct_data.get("struct") == "HTML_NeedsPaint_t" and fname == "pBGRA":
+            py_expr = (
+                "({src}) ? PyBytes_FromStringAndSize("
+                "reinterpret_cast<const char *>({src}), "
+                "(Py_ssize_t)((unsigned long long)({sv}->unWide) * "
+                "(unsigned long long)({sv}->unTall) * 4ULL)) "
+                ": PyBytes_FromStringAndSize(\"\", 0)"
+            ).format(src=src, sv=src_var)
+        else:
+            py_expr = _resolve_field_py_expr(ftype, src, typedefs, enums)
+
         if py_expr is None:
             continue  # skip unsupported field
 
