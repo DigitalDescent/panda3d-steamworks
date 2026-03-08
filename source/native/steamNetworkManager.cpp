@@ -276,18 +276,6 @@ void SteamNetworkManager::send_datagram(SteamNetworkConnectionHandle connection,
 }
 
 ////////////////////////////////////////////////////////////////////
-//     Function: SteamNetworkManager::send_datagram
-//       Access: Published
-//  Description: Sends a datagram to the current client connection
-//               with the given send flags.  Only valid after a
-//               successful connect_by_* call.
-////////////////////////////////////////////////////////////////////
-void SteamNetworkManager::send_datagram(const Datagram &&dg, int send_flags) {
-    if (_interface == nullptr || !_is_client) return;
-    _interface->SendMessageToConnection(_client_connection, dg.get_data(), dg.get_length(), send_flags, nullptr);
-}
-
-////////////////////////////////////////////////////////////////////
 //     Function: SteamNetworkManager::run_callbacks
 //       Access: Published
 //  Description: Pumps the networking callbacks.  Should be called
