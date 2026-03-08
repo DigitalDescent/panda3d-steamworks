@@ -56,7 +56,7 @@ PUBLISHED:
     void set_connection_poll_group(SteamNetworkConnectionHandle connection, SteamNetworkPollGroupHandle poll_group);
 
     void send_datagram(SteamNetworkConnectionHandle connection, const Datagram &dg, int send_flags);
-    void send_datagram(const Datagram &&dg, int send_flags);
+    void send_datagram(const Datagram &dg, int send_flags);
 
     void run_callbacks();
     PT(SteamNetworkEvent) get_next_event();
