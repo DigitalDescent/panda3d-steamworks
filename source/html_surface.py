@@ -25,6 +25,8 @@ class SteamHTMLSurfaceTexture(DirectObject):
     """
 
     _surface_ref_count = 0
+    _instances_by_handle = {}
+    _event_router = None
 
     def __init__(
         self,
@@ -49,11 +51,7 @@ class SteamHTMLSurfaceTexture(DirectObject):
         self._configure_texture()
 
         self._ensure_surface_init()
-
-        self.accept("Steam-HTML_BrowserReady", self._on_browser_ready)
-        self.accept("Steam-HTML_NeedsPaint", self._on_needs_paint)
-        self.accept("Steam-HTML_StartRequest", self._on_start_request)
-        self.accept("Steam-HTML_CloseBrowser", self._on_close_browser)
+        self._ensure_event_router()
 
         SteamHTMLSurface.create_browser(user_agent, user_css, self._on_browser_ready)
 
@@ -65,10 +63,14 @@ class SteamHTMLSurfaceTexture(DirectObject):
         self.ignore_all()
 
         if self.browser_handle is not None:
+            self._instances_by_handle.pop(self.browser_handle, None)
             SteamHTMLSurface.remove_browser(self.browser_handle)
             self.browser_handle = None
 
-        shutil.rmtree(self._temp_dir)
+        try:
+            shutil.rmtree(self._temp_dir)
+        except OSError:
+            pass
         self._release_surface_init()
 
     def set_browser_size(self, width: int, height: int) -> None:
@@ -122,6 +124,7 @@ class SteamHTMLSurfaceTexture(DirectObject):
             return
 
         self.browser_handle = int(handle)
+        self._instances_by_handle[self.browser_handle] = self
         SteamHTMLSurface.set_size(self.browser_handle, self.width, self.height)
         SteamHTMLSurface.set_key_focus(self.browser_handle, True)
 
@@ -139,6 +142,7 @@ class SteamHTMLSurfaceTexture(DirectObject):
         if not isinstance(result, dict):
             return
         if result.get("browser_handle") == self.browser_handle:
+            self._instances_by_handle.pop(self.browser_handle, None)
             self.browser_handle = None
 
     def _on_needs_paint(self, result) -> None:
@@ -170,9 +174,51 @@ class SteamHTMLSurfaceTexture(DirectObject):
         cls._surface_ref_count += 1
 
     @classmethod
+    def _ensure_event_router(cls) -> None:
+        if cls._event_router is not None:
+            return
+
+        router = DirectObject()
+        router.accept("Steam-HTML_NeedsPaint", cls._route_needs_paint)
+        router.accept("Steam-HTML_StartRequest", cls._route_start_request)
+        router.accept("Steam-HTML_CloseBrowser", cls._route_close_browser)
+        cls._event_router = router
+
+    @classmethod
+    def _route_needs_paint(cls, result) -> None:
+        inst = cls._instance_for_result(result)
+        if inst is not None:
+            inst._on_needs_paint(result)
+
+    @classmethod
+    def _route_start_request(cls, result) -> None:
+        inst = cls._instance_for_result(result)
+        if inst is not None:
+            inst._on_start_request(result)
+
+    @classmethod
+    def _route_close_browser(cls, result) -> None:
+        inst = cls._instance_for_result(result)
+        if inst is not None:
+            inst._on_close_browser(result)
+
+    @classmethod
+    def _instance_for_result(cls, result):
+        if not isinstance(result, dict):
+            return None
+        handle = result.get("browser_handle")
+        if handle is None:
+            return None
+        return cls._instances_by_handle.get(int(handle))
+
+    @classmethod
     def _release_surface_init(cls) -> None:
         cls._surface_ref_count = max(0, cls._surface_ref_count - 1)
         if cls._surface_ref_count == 0:
+            cls._instances_by_handle.clear()
+            if cls._event_router is not None:
+                cls._event_router.ignore_all()
+                cls._event_router = None
             SteamHTMLSurface.shutdown()
 
 
