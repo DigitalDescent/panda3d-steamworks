@@ -187,7 +187,7 @@ INTERFACE_OVERRIDES = {
         "class_name": "SteamNetworkingSocket",
     },
     "ISteamNetworkingUtils": {
-        "class_name": "SteamNetworkingUtil",
+        "class_name": "SteamNetworkingUtilsAPI",
     },
     # Example: skip specific methods on an interface
     # "ISteamFriends": {
