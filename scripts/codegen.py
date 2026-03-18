@@ -100,6 +100,20 @@ def steam_method_to_snake(method_name, return_type):
     return _camel_to_snake(name)
 
 
+def steam_flat_method_to_snake(iface_name, flat_method_name):
+    """Convert a Steam flat-method symbol to snake_case.
+
+    Example:
+        SteamAPI_ISteamUserStats_GetAchievementProgressLimitsInt32
+        -> get_achievement_progress_limits_int32
+    """
+    prefix = "SteamAPI_{}_".format(iface_name)
+    name = flat_method_name
+    if name.startswith(prefix):
+        name = name[len(prefix):]
+    return _camel_to_snake(name)
+
+
 # C++ reserved keywords that cannot be used as parameter names
 _CPP_KEYWORDS = frozenset({
     "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand",
@@ -208,17 +222,38 @@ _SCALAR_OUT_PARAM_PREFIXES = (
     "pRTime", "pSteamID", "pNet", "pPort", "pIP",
 )
 _NON_SCALAR_OUT_PARAM_PREFIXES = (
-    "pvec", "pub", "pch", "psz", "pp", "prg", "pData",
+    "pvec", "pub", "pch", "psz", "pp", "prg",
     "pDest", "pOut", "pBuffer", "pArray",
 )
 
 
 def _looks_like_scalar_out_param(param_name):
     """Return True when a Steam pointer name looks like a scalar out-param."""
+    if param_name == "pData":
+        return True
     for prefix in _NON_SCALAR_OUT_PARAM_PREFIXES:
         if param_name.startswith(prefix):
             return False
     return param_name.startswith(_SCALAR_OUT_PARAM_PREFIXES)
+
+
+def _looks_like_output_array_param(params, index):
+    """Return True when a non-const pointer looks like an array buffer."""
+    if index + 1 >= len(params):
+        return False
+
+    param_name = params[index]["paramname"]
+    next_param = params[index + 1]
+    next_type = next_param["paramtype"].strip()
+    next_name = next_param["paramname"]
+
+    if param_name != "pData":
+        return False
+
+    if next_type not in ("int", "uint32", "int32"):
+        return False
+
+    return next_name.startswith(("cb", "cch", "cub", "n", "un", "c"))
 
 
 def resolve_out_param_type(param_name, steam_type, typedefs, enums):
@@ -349,6 +384,10 @@ def classify_method(method, typedefs, enums):
             else:
                 other_pointers.append(i)
         elif pt.endswith("*") and not pt.startswith("const "):
+            if _looks_like_output_array_param(params, i):
+                other_pointers.append(i)
+                i += 1
+                continue
             out_param = resolve_out_param_type(
                 params[i]["paramname"], pt, typedefs, enums)
             if out_param is None:
@@ -436,6 +475,47 @@ def _make_wrapper_params(method, buffer_pairs, out_params, typedefs, enums):
         pname = steam_param_to_snake(p["paramname"])
         result.append((pname, cpp_type, transform))
     return result
+
+
+def _get_generated_method_name(method):
+    """Return the resolved wrapper method name for a Steam method."""
+    return method.get("_generated_name", steam_method_to_snake(
+        method["methodname"], method["returntype"]))
+
+
+def _assign_generated_method_names(iface_name, methods_info):
+    """Resolve wrapper names, disambiguating collisions with flat names.
+
+    Collisions are based on the generated C++ callable signature, which means
+    the wrapper name plus the exposed input parameter types. Output pointers do
+    not participate in overload resolution, so methods that differ only by
+    their out-param types must receive distinct names.
+    """
+    groups = {}
+    for entry in methods_info:
+        method, kind, _bpairs, _ret_info, wrapper_params, _out_params = entry
+        base_name = steam_method_to_snake(method["methodname"], method["returntype"])
+        signature = tuple(ptype for _pname, ptype, _transform in wrapper_params)
+        if kind == ASYNC:
+            signature = signature + ("PyObject *callback",)
+        key = (base_name, signature)
+        groups.setdefault(key, []).append(method)
+
+    for (base_name, _signature), methods in groups.items():
+        if len(methods) == 1:
+            methods[0]["_generated_name"] = base_name
+            continue
+
+        seen_names = set()
+        for index, method in enumerate(methods, start=1):
+            flat_name = method.get("methodname_flat", "")
+            generated_name = None
+            if flat_name:
+                generated_name = steam_flat_method_to_snake(iface_name, flat_name)
+            if not generated_name or generated_name in seen_names:
+                generated_name = "{}_{}".format(base_name, index)
+            method["_generated_name"] = generated_name
+            seen_names.add(generated_name)
 
 
 def _format_header_param(pname, ptype):
@@ -532,7 +612,7 @@ def _determine_method_kind(kind, ret_info):
 def _prepare_header_method(method, kind, bpairs, ret_info, wrapper_params,
                            out_params):
     """Build a context dict for a single method in the header template."""
-    snake = steam_method_to_snake(method["methodname"], method["returntype"])
+    snake = _get_generated_method_name(method)
 
     if kind == ASYNC:
         ret_cpp = "unsigned long long"
@@ -563,7 +643,7 @@ def _prepare_header_method(method, kind, bpairs, ret_info, wrapper_params,
 def _prepare_source_method(method, kind, bpairs, ret_info, wrapper_params,
                            out_params, iface_cfg):
     """Build a context dict for a single method in the source template."""
-    snake = steam_method_to_snake(method["methodname"], method["returntype"])
+    snake = _get_generated_method_name(method)
     steam_name = method["methodname"]
 
     param_decl = ", ".join(
@@ -1081,6 +1161,8 @@ def run_codegen(root_dir=None, check_only=False):
                 method, bpairs, out_params, typedefs, enums)
             methods_info.append((
                 method, kind, bpairs, ret_info, wrapper_params, out_params))
+
+            _assign_generated_method_names(iface_name, methods_info)
 
         if not methods_info and not iface_cfg.get("include_api_lifecycle"):
             print("WARNING: no generatable methods for '{}', skipping."
