@@ -201,14 +201,108 @@ SIMPLE = "simple"           # No special handling needed
 STRING_BUFFER = "buffer"    # Has char*/size output pairs -> return std::string
 SKIP = "skip"               # Cannot auto-generate
 ASYNC = "async"             # SteamAPICall_t return -> CCallResult-based async wrapper
+OUT_PARAMS = "out_params"   # Scalar output pointer params -> return composite value
+
+_SCALAR_OUT_PARAM_PREFIXES = (
+    "pb", "pn", "pun", "pi", "pf", "pd", "pu", "pul",
+    "pRTime", "pSteamID", "pNet", "pPort", "pIP",
+)
+_NON_SCALAR_OUT_PARAM_PREFIXES = (
+    "pvec", "pub", "pch", "psz", "pp", "prg", "pData",
+    "pDest", "pOut", "pBuffer", "pArray",
+)
+
+
+def _looks_like_scalar_out_param(param_name):
+    """Return True when a Steam pointer name looks like a scalar out-param."""
+    for prefix in _NON_SCALAR_OUT_PARAM_PREFIXES:
+        if param_name.startswith(prefix):
+            return False
+    return param_name.startswith(_SCALAR_OUT_PARAM_PREFIXES)
+
+
+def resolve_out_param_type(param_name, steam_type, typedefs, enums):
+    """Resolve a non-const output pointer type.
+
+    Returns metadata describing how to declare the local variable and expose
+    it back to Python, or None if the pointer type is not a supported scalar
+    output parameter.
+    """
+    st = steam_type.strip()
+    if not st.endswith("*") or st.startswith("const "):
+        return None
+    if not _looks_like_scalar_out_param(param_name):
+        return None
+
+    base_type = st[:-1].strip()
+    ret_info = resolve_return_type(base_type, typedefs, enums)
+    if ret_info is None or ret_info[0] == "void" or ret_info[2] == "string":
+        return None
+
+    return {
+        "steam_type": base_type,
+        "local_type": base_type,
+        "return_type": ret_info[0],
+        "default_value": ret_info[1],
+        "special": ret_info[2],
+        "is_enum": base_type in enums,
+    }
+
+
+def _compose_pair_type(types):
+    """Compose a nested std::pair type from one or more C++ types."""
+    if len(types) == 1:
+        return types[0]
+    return "std::pair<{}, {}>".format(types[0], _compose_pair_type(types[1:]))
+
+
+def _compose_pair_expr(expressions):
+    """Compose a nested std::make_pair expression from one or more values."""
+    if len(expressions) == 1:
+        return expressions[0]
+    return "std::make_pair({}, {})".format(
+        expressions[0], _compose_pair_expr(expressions[1:]))
+
+
+def _format_out_return_expr(local_name, out_param):
+    """Format how an output local variable is returned to Python."""
+    if out_param["special"] == "steamid":
+        return "{}.ConvertToUint64()".format(local_name)
+    if out_param["is_enum"]:
+        return "static_cast<int>({})".format(local_name)
+    return local_name
+
+
+def _build_out_param_return_info(ret_info, out_params):
+    """Build composite return-type metadata for OUT_PARAMS methods."""
+    return_types = []
+    defaults = []
+    expressions = []
+
+    if ret_info[0] != "void":
+        return_types.append(ret_info[0])
+        defaults.append(ret_info[1])
+        expressions.append("result")
+
+    for out_param in out_params:
+        return_types.append(out_param["return_type"])
+        defaults.append(out_param["default_value"])
+        expressions.append(_format_out_return_expr(
+            out_param["local_name"], out_param))
+
+    return {
+        "return_type": _compose_pair_type(return_types),
+        "default_value": _compose_pair_expr(defaults),
+        "return_expr": _compose_pair_expr(expressions),
+    }
 
 
 def classify_method(method, typedefs, enums):
-    """Classify a method as SIMPLE, STRING_BUFFER, ASYNC, or SKIP.
+    """Classify a method as SIMPLE, STRING_BUFFER, OUT_PARAMS, ASYNC, or SKIP.
 
-    Returns (kind, buffer_pairs) where buffer_pairs is a list of
+    Returns (kind, buffer_pairs, out_params) where buffer_pairs is a list of
     (char_param_index, size_param_index) tuples for STRING_BUFFER methods.
-    For ASYNC methods, buffer_pairs is always empty.
+    For OUT_PARAMS methods, out_params contains output-pointer metadata.
     """
     ret_type = method["returntype"].strip()
     params = method.get("params", [])
@@ -216,28 +310,29 @@ def classify_method(method, typedefs, enums):
     # --- Async methods (SteamAPICall_t) ---
     if ret_type == "SteamAPICall_t":
         if not getattr(cfg, 'ENABLE_ASYNC_METHODS', False):
-            return SKIP, []
+            return SKIP, [], []
         callresult = method.get("callresult", "")
         if not callresult:
-            return SKIP, []
+            return SKIP, [], []
         skip_cb = getattr(cfg, 'SKIP_CALLBACK_STRUCTS', set())
         if callresult in skip_cb:
-            return SKIP, []
+            return SKIP, [], []
         # Verify all params are resolvable and no output pointers
         for p in params:
             pt = p["paramtype"].strip()
             if pt.endswith("*") and not pt.startswith("const "):
-                return SKIP, []
+                return SKIP, [], []
             if resolve_param_type(pt, typedefs, enums) is None:
-                return SKIP, []
-        return ASYNC, []
+                return SKIP, [], []
+        return ASYNC, [], []
 
     # --- Sync methods ---
     if resolve_return_type(ret_type, typedefs, enums) is None:
-        return SKIP, []
+        return SKIP, [], []
 
     # Scan for pointer params
     buffer_pairs = []       # (char_idx, size_idx)
+    out_params = []         # metadata for scalar output pointer params
     other_pointers = []     # indices of non-buffer pointer params
 
     i = 0
@@ -254,28 +349,46 @@ def classify_method(method, typedefs, enums):
             else:
                 other_pointers.append(i)
         elif pt.endswith("*") and not pt.startswith("const "):
-            other_pointers.append(i)
+            out_param = resolve_out_param_type(
+                params[i]["paramname"], pt, typedefs, enums)
+            if out_param is None:
+                other_pointers.append(i)
+            else:
+                out_param["index"] = i
+                out_param["local_name"] = steam_param_to_snake(
+                    params[i]["paramname"])
+                out_params.append(out_param)
 
         i += 1
 
     if other_pointers:
-        return SKIP, []
+        return SKIP, [], []
+
+    if buffer_pairs and out_params:
+        return SKIP, [], []
 
     # Check that all non-buffer params can be resolved
     skip_indices = set()
     for ci, si in buffer_pairs:
         skip_indices.add(ci)
         skip_indices.add(si)
+    for out_param in out_params:
+        skip_indices.add(out_param["index"])
 
     for idx, p in enumerate(params):
         if idx in skip_indices:
             continue
         if resolve_param_type(p["paramtype"], typedefs, enums) is None:
-            return SKIP, []
+            return SKIP, [], []
 
     if buffer_pairs:
-        return STRING_BUFFER, buffer_pairs
-    return SIMPLE, []
+        return STRING_BUFFER, buffer_pairs, []
+    if out_params:
+        ret_info = resolve_return_type(ret_type, typedefs, enums)
+        if ret_info is None or ret_info[2] == "string":
+            return SKIP, [], []
+        return OUT_PARAMS, [], out_params
+    return SIMPLE, [], []
 
 
 # ========================================================================
@@ -284,7 +397,7 @@ def classify_method(method, typedefs, enums):
 
 def _needs_string_include(methods_info):
     """Check if any generated method uses std::string."""
-    for _method, _kind, _bpairs, ret_info, _wrapper_params in methods_info:
+    for _method, _kind, _bpairs, ret_info, _wrapper_params, _out_params in methods_info:
         if ret_info and ret_info[0] == "std::string":
             return True
         for _pname, ptype, _ptransform in _wrapper_params:
@@ -293,20 +406,27 @@ def _needs_string_include(methods_info):
     return False
 
 
+def _needs_utility_include(methods_info):
+    """Check if any generated method uses std::pair / std::make_pair."""
+    return any(kind == OUT_PARAMS for _, kind, _, _, _, _ in methods_info)
+
+
 def _has_async_methods(methods_info):
     """Check if any method is ASYNC (needs PyObject / steamPython.h)."""
-    return any(kind == ASYNC for _, kind, _, _, _ in methods_info)
+    return any(kind == ASYNC for _, kind, _, _, _, _ in methods_info)
 
 
-def _make_wrapper_params(method, buffer_pairs, typedefs, enums):
+def _make_wrapper_params(method, buffer_pairs, out_params, typedefs, enums):
     """Build the list of (param_name, cpp_type, call_transform) for wrapper.
 
-    Buffer-pair params are excluded.
+    Buffer-pair and output-pointer params are excluded.
     """
     skip_indices = set()
     for ci, si in buffer_pairs:
         skip_indices.add(ci)
         skip_indices.add(si)
+    for out_param in out_params:
+        skip_indices.add(out_param["index"])
 
     result = []
     for idx, p in enumerate(method.get("params", [])):
@@ -361,16 +481,17 @@ def _get_jinja_env():
 # Method context helpers (prepare data for templates)
 # ========================================================================
 
-def _compute_buffer_call_args(method, bpairs, wrapper_params):
-    """Build the call-argument string for a STRING_BUFFER method.
-
-    Inserts ``buf, sizeof(buf)`` in place of the char*/size parameter pairs.
-    """
+def _compute_call_args(method, bpairs, out_params, wrapper_params):
+    """Build the call-argument string for methods with special parameters."""
     all_params = method.get("params", [])
     skip_indices = set()
     for ci, si in bpairs:
         skip_indices.add(ci)
         skip_indices.add(si)
+    out_param_by_index = {}
+    for out_param in out_params:
+        skip_indices.add(out_param["index"])
+        out_param_by_index[out_param["index"]] = out_param
 
     call_parts = []
     wp_iter = iter(wrapper_params)
@@ -381,6 +502,9 @@ def _compute_buffer_call_args(method, bpairs, wrapper_params):
                     call_parts.append("buf")
                     call_parts.append("sizeof(buf)")
                     break
+            if idx in out_param_by_index:
+                call_parts.append("&{}".format(
+                    out_param_by_index[idx]["local_name"]))
             continue
         wp = next(wp_iter)
         call_parts.append(_format_call_arg(wp[0], wp[2]))
@@ -394,6 +518,8 @@ def _determine_method_kind(kind, ret_info):
         return "async"
     if kind == STRING_BUFFER:
         return "buffer"
+    if kind == OUT_PARAMS:
+        return "out_params"
     if ret_info[2] == "string":
         return "string_return"
     if ret_info[2] == "steamid":
@@ -403,7 +529,8 @@ def _determine_method_kind(kind, ret_info):
     return "simple"
 
 
-def _prepare_header_method(method, kind, bpairs, ret_info, wrapper_params):
+def _prepare_header_method(method, kind, bpairs, ret_info, wrapper_params,
+                           out_params):
     """Build a context dict for a single method in the header template."""
     snake = steam_method_to_snake(method["methodname"], method["returntype"])
 
@@ -411,6 +538,8 @@ def _prepare_header_method(method, kind, bpairs, ret_info, wrapper_params):
         ret_cpp = "unsigned long long"
     elif kind == STRING_BUFFER:
         ret_cpp = "std::string"
+    elif kind == OUT_PARAMS:
+        ret_cpp = _build_out_param_return_info(ret_info, out_params)["return_type"]
     else:
         ret_cpp = ret_info[0]
 
@@ -432,7 +561,7 @@ def _prepare_header_method(method, kind, bpairs, ret_info, wrapper_params):
 
 
 def _prepare_source_method(method, kind, bpairs, ret_info, wrapper_params,
-                           iface_cfg):
+                           out_params, iface_cfg):
     """Build a context dict for a single method in the source template."""
     snake = steam_method_to_snake(method["methodname"], method["returntype"])
     steam_name = method["methodname"]
@@ -462,8 +591,17 @@ def _prepare_source_method(method, kind, bpairs, ret_info, wrapper_params,
             steam_name, cfg.DEFAULT_BUFFER_SIZE)
         ctx["buf_size"] = buf_size
         ctx["ret_type_steam"] = method["returntype"].strip()
-        ctx["buffer_call_args"] = _compute_buffer_call_args(
-            method, bpairs, wrapper_params)
+        ctx["buffer_call_args"] = _compute_call_args(
+            method, bpairs, out_params, wrapper_params)
+    elif tmpl_kind == "out_params":
+        out_return = _build_out_param_return_info(ret_info, out_params)
+        ctx["return_type"] = out_return["return_type"]
+        ctx["default_value"] = out_return["default_value"]
+        ctx["return_expr"] = out_return["return_expr"]
+        ctx["ret_type_steam"] = method["returntype"].strip()
+        ctx["out_params"] = out_params
+        ctx["call_args"] = _compute_call_args(
+            method, bpairs, out_params, wrapper_params)
     elif tmpl_kind == "async":
         ctx["callresult"] = method.get("callresult", "")
         if param_decl:
@@ -488,8 +626,8 @@ def generate_header(iface_name, iface_data, iface_cfg, methods_info):
         "description", "Wrapper around {}.".format(iface_name))
 
     methods = [
-        _prepare_header_method(m, k, bp, ri, wp)
-        for m, k, bp, ri, wp in methods_info
+        _prepare_header_method(m, k, bp, ri, wp, op)
+        for m, k, bp, ri, wp, op in methods_info
     ]
 
     return tmpl.render(
@@ -497,6 +635,7 @@ def generate_header(iface_name, iface_data, iface_cfg, methods_info):
         class_name=class_name,
         description_lines=description.split("\n"),
         needs_string=_needs_string_include(methods_info),
+        needs_utility=_needs_utility_include(methods_info),
         has_async=_has_async_methods(methods_info),
         include_api_lifecycle=iface_cfg.get("include_api_lifecycle", False),
         methods=methods,
@@ -539,8 +678,8 @@ def generate_source(iface_name, iface_data, iface_cfg, methods_info,
 
     # Build per-method template contexts
     methods = [
-        _prepare_source_method(m, k, bp, ri, wp, iface_cfg)
-        for m, k, bp, ri, wp in methods_info
+        _prepare_source_method(m, k, bp, ri, wp, op, iface_cfg)
+        for m, k, bp, ri, wp, op in methods_info
     ]
 
     return tmpl.render(
@@ -551,6 +690,7 @@ def generate_source(iface_name, iface_data, iface_cfg, methods_info,
         accessor_fn=accessor_fn,
         helper_name=helper_name,
         extra_includes=iface_cfg.get("extra_includes", []),
+        needs_utility=_needs_utility_include(methods_info),
         include_api_lifecycle=iface_cfg.get("include_api_lifecycle", False),
         needed_callresults=needed_callresults,
         methods=methods,
@@ -928,17 +1068,19 @@ def run_codegen(root_dir=None, check_only=False):
         skip_set = set(iface_cfg.get("skip_methods", []))
 
         # Classify and filter methods
-        methods_info = []  # (method, kind, bpairs, ret_info, wrapper_params)
+        methods_info = []  # (method, kind, bpairs, ret_info, wrapper_params, out_params)
         for method in iface_data.get("methods", []):
             if method["methodname"] in skip_set:
                 continue
-            kind, bpairs = classify_method(method, typedefs, enums)
+            kind, bpairs, out_params = classify_method(method, typedefs, enums)
             if kind == SKIP:
                 continue
 
             ret_info = resolve_return_type(method["returntype"], typedefs, enums)
-            wrapper_params = _make_wrapper_params(method, bpairs, typedefs, enums)
-            methods_info.append((method, kind, bpairs, ret_info, wrapper_params))
+            wrapper_params = _make_wrapper_params(
+                method, bpairs, out_params, typedefs, enums)
+            methods_info.append((
+                method, kind, bpairs, ret_info, wrapper_params, out_params))
 
         if not methods_info and not iface_cfg.get("include_api_lifecycle"):
             print("WARNING: no generatable methods for '{}', skipping."

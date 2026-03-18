@@ -288,6 +288,66 @@ SIMPLE = "simple"
 STRING_BUFFER = "buffer"
 SKIP = "skip"
 ASYNC = "async"
+OUT_PARAMS = "out_params"
+
+_SCALAR_OUT_PARAM_PREFIXES = (
+    "pb", "pn", "pun", "pi", "pf", "pd", "pu", "pul",
+    "pRTime", "pSteamID", "pNet", "pPort", "pIP",
+)
+_NON_SCALAR_OUT_PARAM_PREFIXES = (
+    "pvec", "pub", "pch", "psz", "pp", "prg", "pData",
+    "pDest", "pOut", "pBuffer", "pArray",
+)
+
+
+def _looks_like_scalar_out_param(param_name):
+    """Return True when a Steam pointer name looks like a scalar out-param."""
+    for prefix in _NON_SCALAR_OUT_PARAM_PREFIXES:
+        if param_name.startswith(prefix):
+            return False
+    return param_name.startswith(_SCALAR_OUT_PARAM_PREFIXES)
+
+
+def resolve_out_param_type(param_name, steam_type, typedefs, enums):
+    """Resolve a non-const output pointer type for documentation."""
+    st = steam_type.strip()
+    if not st.endswith("*") or st.startswith("const "):
+        return None
+    if not _looks_like_scalar_out_param(param_name):
+        return None
+
+    base_type = st[:-1].strip()
+    ret_info = resolve_return_type(base_type, typedefs, enums)
+    if ret_info is None or ret_info[0] == "void" or ret_info[2] == "string":
+        return None
+
+    cpp_type = ret_info[0]
+    py_type = _cpp_to_python_type(cpp_type)
+    if base_type in enums:
+        py_type = "int"
+
+    return {
+        "steam_type": base_type,
+        "return_type": cpp_type,
+        "python_type": py_type,
+        "is_enum": base_type in enums,
+    }
+
+
+def _compose_python_return_type(types):
+    """Compose the Python tuple type mirroring the nested std::pair shape."""
+    if len(types) == 1:
+        return types[0]
+    return "tuple[{}, {}]".format(types[0], _compose_python_return_type(types[1:]))
+
+
+def _compose_output_value_names(names):
+    """Compose a display string matching the nested return shape."""
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return "({}, {})".format(names[0], names[1])
+    return "({}, {})".format(names[0], _compose_output_value_names(names[1:]))
 
 
 def classify_method(method, typedefs, enums):
@@ -296,25 +356,26 @@ def classify_method(method, typedefs, enums):
 
     if ret_type == "SteamAPICall_t":
         if not getattr(cfg, 'ENABLE_ASYNC_METHODS', False):
-            return SKIP, []
+            return SKIP, [], []
         callresult = method.get("callresult", "")
         if not callresult:
-            return SKIP, []
+            return SKIP, [], []
         skip_cb = getattr(cfg, 'SKIP_CALLBACK_STRUCTS', set())
         if callresult in skip_cb:
-            return SKIP, []
+            return SKIP, [], []
         for p in params:
             pt = p["paramtype"].strip()
             if pt.endswith("*") and not pt.startswith("const "):
-                return SKIP, []
+                return SKIP, [], []
             if resolve_param_type(pt, typedefs, enums) is None:
-                return SKIP, []
-        return ASYNC, []
+                return SKIP, [], []
+        return ASYNC, [], []
 
     if resolve_return_type(ret_type, typedefs, enums) is None:
-        return SKIP, []
+        return SKIP, [], []
 
     buffer_pairs = []
+    out_params = []
     other_pointers = []
 
     i = 0
@@ -329,26 +390,44 @@ def classify_method(method, typedefs, enums):
             else:
                 other_pointers.append(i)
         elif pt.endswith("*") and not pt.startswith("const "):
-            other_pointers.append(i)
+            out_param = resolve_out_param_type(
+                params[i]["paramname"], pt, typedefs, enums)
+            if out_param is None:
+                other_pointers.append(i)
+            else:
+                out_param["index"] = i
+                out_param["python_name"] = steam_param_to_snake(
+                    params[i]["paramname"])
+                out_params.append(out_param)
         i += 1
 
     if other_pointers:
-        return SKIP, []
+        return SKIP, [], []
+
+    if buffer_pairs and out_params:
+        return SKIP, [], []
 
     skip_indices = set()
     for ci, si in buffer_pairs:
         skip_indices.add(ci)
         skip_indices.add(si)
+    for out_param in out_params:
+        skip_indices.add(out_param["index"])
 
     for idx, p in enumerate(params):
         if idx in skip_indices:
             continue
         if resolve_param_type(p["paramtype"], typedefs, enums) is None:
-            return SKIP, []
+            return SKIP, [], []
 
     if buffer_pairs:
-        return STRING_BUFFER, buffer_pairs
-    return SIMPLE, []
+        return STRING_BUFFER, buffer_pairs, []
+    if out_params:
+        ret_info = resolve_return_type(ret_type, typedefs, enums)
+        if ret_info is None or ret_info[2] == "string":
+            return SKIP, [], []
+        return OUT_PARAMS, [], out_params
+    return SIMPLE, [], []
 
 
 # ========================================================================
@@ -431,12 +510,14 @@ def _class_name_to_slug(class_name):
     return s.lower()
 
 
-def _make_wrapper_params_for_doc(method, buffer_pairs, typedefs, enums):
+def _make_wrapper_params_for_doc(method, buffer_pairs, out_params, typedefs, enums):
     """Build list of (snake_name, python_type, steam_type) for documentation."""
     skip_indices = set()
     for ci, si in buffer_pairs:
         skip_indices.add(ci)
         skip_indices.add(si)
+    for out_param in out_params:
+        skip_indices.add(out_param["index"])
 
     result = []
     for idx, p in enumerate(method.get("params", [])):
@@ -532,11 +613,13 @@ def generate_interface_page(iface_name, iface_data, iface_cfg, methods_info,
     # Group methods by kind for nicer layout
     sync_methods = []
     async_methods = []
-    for method, kind, bpairs, ret_info, wrapper_params in methods_info:
+    for method, kind, bpairs, ret_info, wrapper_params, out_params in methods_info:
         if kind == ASYNC:
-            async_methods.append((method, kind, bpairs, ret_info, wrapper_params))
+            async_methods.append((
+                method, kind, bpairs, ret_info, wrapper_params, out_params))
         else:
-            sync_methods.append((method, kind, bpairs, ret_info, wrapper_params))
+            sync_methods.append((
+                method, kind, bpairs, ret_info, wrapper_params, out_params))
 
     # Sort each group alphabetically by snake name
     def _sort_key(entry):
@@ -552,9 +635,9 @@ def generate_interface_page(iface_name, iface_data, iface_cfg, methods_info,
         lines.append("")
         lines.append("## Methods")
         lines.append("")
-        for method, kind, bpairs, ret_info, wrapper_params in sync_methods:
+        for method, kind, bpairs, ret_info, wrapper_params, out_params in sync_methods:
             _write_method_section(lines, method, kind, bpairs, ret_info,
-                                  wrapper_params, typedefs, enums)
+                                  wrapper_params, out_params, typedefs, enums)
 
     # Async methods section
     if async_methods:
@@ -567,9 +650,9 @@ def generate_interface_page(iface_name, iface_data, iface_cfg, methods_info,
         lines.append("> The callback receives a `dict` with the result fields.")
         lines.append("> You **must** call `SteamCallbackManager.run_callbacks()` each frame.")
         lines.append("")
-        for method, kind, bpairs, ret_info, wrapper_params in async_methods:
+        for method, kind, bpairs, ret_info, wrapper_params, out_params in async_methods:
             _write_method_section(lines, method, kind, bpairs, ret_info,
-                                  wrapper_params, typedefs, enums,
+                                  wrapper_params, out_params, typedefs, enums,
                                   callback_struct_map=callback_struct_map)
 
     # Extra methods section
@@ -610,7 +693,7 @@ def generate_interface_page(iface_name, iface_data, iface_cfg, methods_info,
 
 
 def _write_method_section(lines, method, kind, bpairs, ret_info,
-                          wrapper_params, typedefs, enums,
+                          wrapper_params, out_params, typedefs, enums,
                           callback_struct_map=None):
     """Write the markdown for a single method."""
     snake = steam_method_to_snake(method["methodname"], method["returntype"])
@@ -623,13 +706,28 @@ def _write_method_section(lines, method, kind, bpairs, ret_info,
     elif kind == STRING_BUFFER:
         py_ret = "str"
         ret_note = ""
+    elif kind == OUT_PARAMS:
+        out_types = [p["python_type"] for p in out_params]
+        out_names = [p["python_name"] for p in out_params]
+        if ret_info[0] == "void":
+            py_ret = _compose_python_return_type(out_types)
+            ret_note = "Returns {}.".format(_compose_output_value_names(out_names))
+        else:
+            head_type = _cpp_to_python_type(ret_info[0])
+            head_name = "result"
+            if method["returntype"].strip() == "bool":
+                head_name = "success"
+            py_ret = _compose_python_return_type([head_type] + out_types)
+            ret_note = "Returns {}.".format(
+                _compose_output_value_names([head_name] + out_names))
     else:
         cpp_ret = ret_info[0]
         py_ret = _cpp_to_python_type(cpp_ret)
         ret_note = ""
 
     # Build parameter docs
-    doc_params = _make_wrapper_params_for_doc(method, bpairs, typedefs, enums)
+    doc_params = _make_wrapper_params_for_doc(
+        method, bpairs, out_params, typedefs, enums)
 
     # Build signature
     param_sig_parts = ["{}: {}".format(pn, pt) for pn, pt, _st in doc_params]
@@ -945,30 +1043,18 @@ def run_docs_codegen(root_dir=None, check_only=False):
         for method in iface_data.get("methods", []):
             if method["methodname"] in skip_set:
                 continue
-            kind, bpairs = classify_method(method, typedefs, enums)
+            kind, bpairs, out_params = classify_method(method, typedefs, enums)
             if kind == SKIP:
                 continue
 
             ret_info = resolve_return_type(method["returntype"], typedefs, enums)
-            # Build wrapper params (excluding buffer pairs)
-            skip_indices = set()
-            for ci, si in bpairs:
-                skip_indices.add(ci)
-                skip_indices.add(si)
-            wrapper_params = []
-            for idx, p in enumerate(method.get("params", [])):
-                if idx in skip_indices:
-                    continue
-                resolved = resolve_param_type(p["paramtype"], typedefs, enums)
-                if resolved is None:
-                    continue
-                cpp_type, transform = resolved
-                pname = steam_param_to_snake(p["paramname"])
-                wrapper_params.append((pname, cpp_type, transform))
+            wrapper_params = _make_wrapper_params_for_doc(
+                method, bpairs, out_params, typedefs, enums)
 
             # Annotate method with interface name for display
             method["_iface_name"] = iface_name
-            methods_info.append((method, kind, bpairs, ret_info, wrapper_params))
+            methods_info.append((
+                method, kind, bpairs, ret_info, wrapper_params, out_params))
 
         if not methods_info and not iface_cfg.get("include_api_lifecycle"):
             continue

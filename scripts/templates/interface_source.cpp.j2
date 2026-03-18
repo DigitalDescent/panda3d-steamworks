@@ -7,6 +7,9 @@
 
 #include <steam/steam_api.h>
 #include <steam/steam_api_flat.h>
+{% if needs_utility %}
+#include <utility>
+{% endif %}
 {% for inc in extra_includes %}
 #include {{ inc }}
 {% endfor %}
@@ -113,6 +116,25 @@ std::string {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
   if (len > 0) return std::string(buf);
 {% endif %}
   return std::string();
+}
+
+{% elif m.kind == "out_params" %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ m.snake_name }}
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+{{ m.return_type }} {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+  {{ iface_name }} *iface = {{ helper_name }}();
+  if (!iface) return {{ m.default_value }};
+{% for out_param in m.out_params %}
+  {{ out_param.local_type }} {{ out_param.local_name }} = {};
+{% endfor %}
+{% if m.ret_type_steam == "void" %}
+  iface->{{ m.steam_name }}({{ m.call_args }});
+{% else %}
+  {{ m.ret_type_steam }} result = iface->{{ m.steam_name }}({{ m.call_args }});
+{% endif %}
+  return {{ m.return_expr }};
 }
 
 {% elif m.kind == "async" %}

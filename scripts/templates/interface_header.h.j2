@@ -9,6 +9,9 @@
 {% if needs_string %}
 #include <string>
 {% endif %}
+{% if needs_utility %}
+#include <utility>
+{% endif %}
 
 ////////////////////////////////////////////////////////////////////
 //       Class : {{ class_name }}
