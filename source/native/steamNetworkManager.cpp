@@ -10,13 +10,11 @@
 #include "steamEnums_bindings.h"
 #include "steamNetworkConnectionInfo.h"
 #include "steamNetworkMessage.h"
-#include "pStatCollector.h"
 
-#include <steam/isteamnetworkingutils.h>
 
 TypeHandle SteamNetworkManager::_type_handle;
 SteamNetworkManager *SteamNetworkManager::_global_ptr = nullptr;
-static SteamNetworkManager *_cast_global_ptr = nullptr;
+
 
 ////////////////////////////////////////////////////////////////////
 //     Function: SteamNetworkManager::SteamNetworkManager
@@ -39,7 +37,7 @@ SteamNetworkManager::SteamNetworkManager() {
 //     Function: SteamNetworkManager::get_global_ptr
 //       Access: Published, Static
 //  Description: Returns the global SteamNetworkManager pointer,
-//               or nullptr if none has been created.
+//               creating one if none has been created yet.
 ////////////////////////////////////////////////////////////////////
 SteamNetworkManager *SteamNetworkManager::get_global_ptr() {
     if (!_global_ptr) {
@@ -273,18 +271,6 @@ void SteamNetworkManager::set_connection_poll_group(SteamNetworkConnectionHandle
 void SteamNetworkManager::send_datagram(SteamNetworkConnectionHandle connection, const Datagram &dg, int send_flags) {
     if (_interface == nullptr) return;
     _interface->SendMessageToConnection(connection, dg.get_data(), dg.get_length(), send_flags, nullptr);
-}
-
-////////////////////////////////////////////////////////////////////
-//     Function: SteamNetworkManager::send_datagram
-//       Access: Published
-//  Description: Sends a datagram to the current client connection
-//               with the given send flags.  Only valid after a
-//               successful connect_by_* call.
-////////////////////////////////////////////////////////////////////
-void SteamNetworkManager::send_datagram(const Datagram &&dg, int send_flags) {
-    if (_interface == nullptr || !_is_client) return;
-    _interface->SendMessageToConnection(_client_connection, dg.get_data(), dg.get_length(), send_flags, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////

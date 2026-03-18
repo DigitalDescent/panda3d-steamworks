@@ -41,8 +41,8 @@ PUBLISHED:
     virtual ~SteamNetworkManager() = default;
     static SteamNetworkManager *get_global_ptr();
 
-    SteamNetworkConnectionHandle create_ip_socket(int port);
-    SteamNetworkConnectionHandle create_steam_id_socket(int port);
+    SteamNetworkListenSocketHandle create_ip_socket(int port);
+    SteamNetworkListenSocketHandle create_steam_id_socket(int port);
     SteamNetworkConnectionHandle connect_by_ip_address(const NetAddress &address);
     SteamNetworkConnectionHandle connect_by_steam_id(const std::string &steam_id);
     bool get_connection_info(SteamNetworkConnectionHandle connection, SteamNetworkConnectionInfo &info);
@@ -56,7 +56,7 @@ PUBLISHED:
     void set_connection_poll_group(SteamNetworkConnectionHandle connection, SteamNetworkPollGroupHandle poll_group);
 
     void send_datagram(SteamNetworkConnectionHandle connection, const Datagram &dg, int send_flags);
-    void send_datagram(const Datagram &&dg, int send_flags);
+    void send_datagram(const Datagram &dg, int send_flags);
 
     void run_callbacks();
     PT(SteamNetworkEvent) get_next_event();
