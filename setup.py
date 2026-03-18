@@ -22,6 +22,7 @@ import sysconfig
 
 from setuptools import Command, Distribution, Extension, setup
 from setuptools.command.build_ext import build_ext as _build_ext
+from setuptools.command.clean import clean as _clean
 
 # ---------------------------------------------------------------------------
 # Panda3D must be imported first (engine quirk)
@@ -400,20 +401,18 @@ class CMakeBuild(_build_ext):
 # Custom clean command
 # ---------------------------------------------------------------------------
 
-class CleanBindings(Command):
+class CleanBindings(_clean):
     """Remove all generated *_bindings.h and *_bindings.cpp files from
-    source/native as well as the interrogate_module/wrapper files."""
+    source/native as well as the interrogate_module/wrapper files, in addition
+    to performing the standard setuptools clean."""
 
-    description = "remove generated _bindings and interrogate files"
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
+    description = "remove build artifacts plus generated _bindings and interrogate files"
 
     def run(self):
+        # First perform the standard setuptools clean behavior.
+        super().run()
+
+        # Then remove generated binding and interrogate files.
         native_dir = os.path.join(ROOT_DIR, "source", "native")
         patterns = [
             os.path.join(native_dir, "*_bindings.h"),
