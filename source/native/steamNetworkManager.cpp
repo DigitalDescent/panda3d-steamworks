@@ -10,6 +10,7 @@
 #include "steamEnums_bindings.h"
 #include "steamNetworkConnectionInfo.h"
 #include "steamNetworkMessage.h"
+#include <steam/isteamnetworkingutils.h>
 
 
 TypeHandle SteamNetworkManager::_type_handle;
@@ -271,6 +272,17 @@ void SteamNetworkManager::set_connection_poll_group(SteamNetworkConnectionHandle
 void SteamNetworkManager::send_datagram(SteamNetworkConnectionHandle connection, const Datagram &dg, int send_flags) {
     if (_interface == nullptr) return;
     _interface->SendMessageToConnection(connection, dg.get_data(), dg.get_length(), send_flags, nullptr);
+}
+
+////////////////////////////////////////////////////////////////////
+//     Function: SteamNetworkManager::send_datagram (broadcast)
+//       Access: Published
+//  Description: Sends a datagram to the current client connection
+//               (set by connect_by_ip_address / connect_by_steam_id).
+////////////////////////////////////////////////////////////////////
+void SteamNetworkManager::send_datagram(const Datagram &dg, int send_flags) {
+    if (_interface == nullptr || _client_connection == 0) return;
+    _interface->SendMessageToConnection(_client_connection, dg.get_data(), dg.get_length(), send_flags, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////

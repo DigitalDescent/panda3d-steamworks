@@ -3,7 +3,7 @@
 #pragma once
 
 #include "pandabase.h"
-{% if has_async %}
+{% if has_async or has_bytes_buffer or has_out_params %}
 #include "steamPython_bindings.h"
 {% endif %}
 {% if needs_string %}

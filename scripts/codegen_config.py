@@ -119,6 +119,7 @@ PARAM_TYPES = {
     "SteamParamStringArray_t *": None,  # Skip - complex type
     "HHTMLBrowser":   ("unsigned int",        None),
     "PartyBeaconID_t": ("unsigned long long", None),
+    "SteamAPICall_t": ("unsigned long long", None),
 }
 
 # ---------------------------------------------------------------------------

@@ -123,9 +123,9 @@ std::string {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
 //     Function: {{ class_name }}::{{ m.snake_name }}
 //       Access: Published, Static
 ////////////////////////////////////////////////////////////////////
-{{ m.return_type }} {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+PyObject *{{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
   {{ iface_name }} *iface = {{ helper_name }}();
-  if (!iface) return {{ m.default_value }};
+  if (!iface) Py_RETURN_NONE;
 {% for out_param in m.out_params %}
   {{ out_param.local_type }} {{ out_param.local_name }} = {};
 {% endfor %}
@@ -134,7 +134,17 @@ std::string {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
 {% else %}
   {{ m.ret_type_steam }} result = iface->{{ m.steam_name }}({{ m.call_args }});
 {% endif %}
-  return {{ m.return_expr }};
+  PyObject *tuple_obj = PyTuple_New({{ m.tuple_items | length }});
+  if (!tuple_obj) return nullptr;
+{% for item in m.tuple_items %}
+  PyObject *item_{{ loop.index0 }} = {{ item }};
+  if (!item_{{ loop.index0 }}) {
+    Py_DECREF(tuple_obj);
+    return nullptr;
+  }
+  PyTuple_SET_ITEM(tuple_obj, {{ loop.index0 }}, item_{{ loop.index0 }});
+{% endfor %}
+  return tuple_obj;
 }
 
 {% elif m.kind == "async" %}
@@ -152,6 +162,23 @@ unsigned long long {{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
     _steam_async_call_{{ m.callresult }}(call, callback);
   }
   return (unsigned long long)call;
+}
+
+{% elif m.kind == "bytes_buffer" %}
+////////////////////////////////////////////////////////////////////
+//     Function: {{ class_name }}::{{ m.snake_name }}
+//       Access: Published, Static
+////////////////////////////////////////////////////////////////////
+PyObject *{{ class_name }}::{{ m.snake_name }}({{ m.param_decl }}) {
+  {{ iface_name }} *iface = {{ helper_name }}();
+  if (!iface || {{ m.bytes_size_param }} <= 0) Py_RETURN_NONE;
+  std::string buf({{ m.bytes_size_param }}, '\0');
+{% if m.ret_type_steam == "bool" %}
+  if (!iface->{{ m.steam_name }}({{ m.bytes_call_args }})) Py_RETURN_NONE;
+{% else %}
+  iface->{{ m.steam_name }}({{ m.bytes_call_args }});
+{% endif %}
+  return PyBytes_FromStringAndSize(buf.data(), {{ m.bytes_size_param }});
 }
 
 {% endif %}
