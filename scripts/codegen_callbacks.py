@@ -25,7 +25,10 @@ After modifying this file, re-run the code generator:
 
 from __future__ import print_function
 
+import os
 import re
+
+import jinja2
 
 import codegen_config as cfg
 
@@ -198,26 +201,39 @@ def collect_broadcast_structs():
 
 
 # ========================================================================
-# Code generation: Python dict builder from callback struct fields
+# Jinja2 template environment
 # ========================================================================
 
-def _gen_dict_builder(lines, indent, struct_data, typedefs, enums,
-                      src_var="pResult", include_io_failure=False):
-    """Generate C++ code that builds a PyObject* dict from callback fields.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_TEMPLATES_DIR = os.path.join(_SCRIPT_DIR, "templates")
 
-    Appends lines that create a local ``dict`` variable.  The caller is
-    responsible for passing it to the Python callback and Py_DECREF'ing it.
+_jinja_env = None
 
-    Parameters
-    ----------
-    src_var : str
-        Name of the C++ pointer variable, e.g. ``"pResult"``.
-    include_io_failure : bool
-        If True, adds ``"io_failure"`` key from a ``bIOFailure`` local.
+
+def _get_jinja_env():
+    """Return (and cache) a Jinja2 Environment pointing at scripts/templates/."""
+    global _jinja_env
+    if _jinja_env is None:
+        _jinja_env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(_TEMPLATES_DIR),
+            trim_blocks=True,
+            lstrip_blocks=True,
+            keep_trailing_newline=True,
+        )
+    return _jinja_env
+
+
+# ========================================================================
+# Dict entry preparation (for templates)
+# ========================================================================
+
+def _prepare_dict_entries(struct_data, typedefs, enums, src_var="pResult"):
+    """Build a list of {key, py_expr} dicts for template rendering.
+
+    Each entry represents one field of a callback struct that should be
+    added to a Python dict.  Unsupported field types are skipped.
     """
-    lines.append("{}PyObject *dict = PyDict_New();".format(indent))
-    lines.append("{}PyObject *val;".format(indent))
-
+    entries = []
     for field in struct_data.get("fields", []):
         ftype = field["fieldtype"].strip()
         fname = field["fieldname"]
@@ -226,19 +242,10 @@ def _gen_dict_builder(lines, indent, struct_data, typedefs, enums,
 
         py_expr = _resolve_field_py_expr(ftype, src, typedefs, enums)
         if py_expr is None:
-            continue  # skip unsupported field
+            continue
 
-        lines.append("{}val = {};".format(indent, py_expr))
-        lines.append('{}PyDict_SetItemString(dict, "{}", val);'.format(
-            indent, dict_key))
-        lines.append("{}Py_DECREF(val);".format(indent))
-
-    if include_io_failure:
-        lines.append("{}val = bIOFailure ? Py_True : Py_False;".format(indent))
-        lines.append("{}Py_INCREF(val);".format(indent))
-        lines.append('{}PyDict_SetItemString(dict, "io_failure", val);'.format(
-            indent))
-        lines.append("{}Py_DECREF(val);".format(indent))
+        entries.append({"key": dict_key, "py_expr": py_expr})
+    return entries
 
 
 # ========================================================================
@@ -246,20 +253,10 @@ def _gen_dict_builder(lines, indent, struct_data, typedefs, enums,
 # ========================================================================
 
 def generate_python_compat_header(banner):
-    """Generate steamPython.h: provides PyObject for both interrogate and C++."""
-    lines = [banner, ""]
-    lines.append("#pragma once")
-    lines.append("")
-    lines.append("// Provide a PyObject declaration that works for both")
-    lines.append("// interrogate (CPPPARSER) and normal C++ compilation.")
-    lines.append("#ifdef CPPPARSER")
-    lines.append("struct _object;")
-    lines.append("typedef _object PyObject;")
-    lines.append("#else")
-    lines.append("#include <Python.h>")
-    lines.append("#endif")
-    lines.append("")
-    return "\n".join(lines)
+    """Generate steamPython_bindings.h via Jinja2 template."""
+    env = _get_jinja_env()
+    tmpl = env.get_template("python_compat_header.h.j2")
+    return tmpl.render(banner=banner)
 
 
 # ========================================================================
@@ -267,47 +264,10 @@ def generate_python_compat_header(banner):
 # ========================================================================
 
 def generate_callback_manager_header(banner):
-    """Generate the steamCallbackManager.h header.
-
-    This is a tiny header -- all heavy lifting lives in the .cpp behind
-    ``#ifndef CPPPARSER``.
-
-    Broadcast callbacks fire as Panda3D messenger events so users can
-    use the familiar ``self.accept()`` / ``self.ignore()`` pattern.
-    """
-    lines = [banner, ""]
-    lines.append("#pragma once")
-    lines.append("")
-    lines.append('#include "pandabase.h"')
-    lines.append('#include "steamPython_bindings.h"')
-    lines.append("#include <string>")
-    lines.append("")
-    lines.append("/" * 68)
-    lines.append("//       Class : SteamCallbackManager")
-    lines.append("// Description : Manages Steamworks async call-result")
-    lines.append("//               dispatching and broadcast callback")
-    lines.append("//               events.  Call run_callbacks() every")
-    lines.append("//               frame from a Panda3D task.")
-    lines.append("//")
-    lines.append("//               Broadcast callbacks are delivered as")
-    lines.append("//               Panda3D events via the messenger.")
-    lines.append("//               Use self.accept() / self.ignore().")
-    lines.append("/" * 68)
-    lines.append("class EXPORT_CLASS SteamCallbackManager {")
-    lines.append("PUBLISHED:")
-    lines.append("  // Process pending Steam callbacks.  Call every frame.")
-    lines.append("  // On the first call, broadcast listeners are")
-    lines.append("  // automatically registered with Steam.")
-    lines.append("  static void run_callbacks();")
-    lines.append("")
-    lines.append("  // Shut down all listeners and cancel pending async calls.")
-    lines.append("  static void shutdown();")
-    lines.append("")
-    lines.append("private:")
-    lines.append("  SteamCallbackManager() = delete;")
-    lines.append("};")
-    lines.append("")
-    return "\n".join(lines)
+    """Generate steamCallbackManager_bindings.h via Jinja2 template."""
+    env = _get_jinja_env()
+    tmpl = env.get_template("callback_manager_header.h.j2")
+    return tmpl.render(banner=banner)
 
 
 # ========================================================================
@@ -318,254 +278,48 @@ def generate_callback_manager_source(async_struct_names,
                                      broadcast_struct_names,
                                      callback_struct_map,
                                      typedefs, enums, banner):
-    """Generate steamCallbackManager.cpp.
-
-    Contains:
-    - ``_PendingCall_<StructName>`` handlers for each async call-result type
-    - Registration functions: ``_steam_async_call_<StructName>(call, callback)``
-    - ``_BroadcastHandler`` class with CCallback members
-    - ``SteamCallbackManager`` implementation
-    """
-    lines = [banner, ""]
-    lines.append('#include "steamCallbackManager_bindings.h"')
-    lines.append("")
-    lines.append("// Guard implementation from interrogate.")
-    lines.append("#ifndef CPPPARSER")
-    lines.append("")
-    lines.append("#include <steam/steam_api.h>")
-    lines.append("#include <steam/steam_gameserver.h>")
-    lines.append("#include <Python.h>")
-    lines.append("#include <vector>")
-    lines.append("#include <string>")
-    lines.append("")
+    """Generate steamCallbackManager_bindings.cpp via Jinja2 template."""
+    env = _get_jinja_env()
+    tmpl = env.get_template("callback_manager_source.cpp.j2")
 
     skip = getattr(cfg, "SKIP_CALLBACK_STRUCTS", set())
+    event_prefix = getattr(cfg, "BROADCAST_EVENT_PREFIX", "Steam-")
 
-    # ---- Collect generatable structs ----
-    gen_async = []  # (struct_name, struct_data)
+    # Prepare async struct contexts
+    async_structs = []
     for struct_name in sorted(async_struct_names):
         if struct_name in skip:
             continue
         struct_data = callback_struct_map.get(struct_name)
         if struct_data is None:
             continue
-        gen_async.append((struct_name, struct_data))
+        async_structs.append({
+            "name": struct_name,
+            "handler_name": "_PendingCall_{}".format(struct_name),
+            "dict_entries": _prepare_dict_entries(
+                struct_data, typedefs, enums, src_var="pResult"),
+        })
 
-    gen_broadcast = []  # (struct_name, struct_data)
+    # Prepare broadcast struct contexts
+    broadcast_structs = []
     for struct_name in sorted(broadcast_struct_names):
         if struct_name in skip:
             continue
         struct_data = callback_struct_map.get(struct_name)
         if struct_data is None:
             continue
-        gen_broadcast.append((struct_name, struct_data))
+        broadcast_structs.append({
+            "name": struct_name,
+            "handler_fn": "_On_{}".format(struct_name),
+            "cb_member": "_cb_{}".format(struct_name),
+            "event_name": "{}{}".format(event_prefix,
+                                        broadcast_name(struct_name)),
+            "dict_entries": _prepare_dict_entries(
+                struct_data, typedefs, enums, src_var="pParam"),
+        })
 
-    # ==================================================================
-    # Pending async call result handlers
-    # ==================================================================
-    for struct_name, struct_data in gen_async:
-        handler = "_PendingCall_{}".format(struct_name)
-
-        lines.append("// " + "-" * 60)
-        lines.append("// Async result handler: {}".format(struct_name))
-        lines.append("// " + "-" * 60)
-        lines.append("")
-        lines.append("struct {} {{".format(handler))
-        lines.append("  CCallResult<{}, {}> call_result;".format(
-            handler, struct_name))
-        lines.append("  PyObject *py_callback;")
-        lines.append("  bool completed;")
-        lines.append("")
-        lines.append("  {}(SteamAPICall_t call, PyObject *cb)".format(handler))
-        lines.append("    : py_callback(cb), completed(false) {")
-        lines.append("    Py_XINCREF(py_callback);")
-        lines.append("    call_result.Set(call, this, &{}::OnComplete);".format(
-            handler))
-        lines.append("  }")
-        lines.append("")
-        lines.append("  ~{}() {{".format(handler))
-        lines.append("    Py_XDECREF(py_callback);")
-        lines.append("  }")
-        lines.append("")
-        lines.append("  void OnComplete({} *pResult, bool bIOFailure) {{".format(
-            struct_name))
-        lines.append("    if (py_callback && py_callback != Py_None"
-                     " && PyCallable_Check(py_callback)) {")
-
-        _gen_dict_builder(lines, "      ", struct_data, typedefs, enums,
-                          src_var="pResult", include_io_failure=True)
-
-        lines.append("      PyObject *ret = PyObject_CallFunctionObjArgs("
-                     "py_callback, dict, NULL);")
-        lines.append("      if (!ret) PyErr_Print();")
-        lines.append("      Py_XDECREF(ret);")
-        lines.append("      Py_DECREF(dict);")
-        lines.append("    }")
-        lines.append("    completed = true;")
-        lines.append("  }")
-        lines.append("};")
-        lines.append("")
-
-        # Vector + registration function
-        lines.append("static std::vector<{}*> _pending_{};".format(
-            handler, struct_name))
-        lines.append("")
-        lines.append(
-            "void _steam_async_call_{name}("
-            "SteamAPICall_t call, PyObject *callback) {{".format(
-                name=struct_name))
-        lines.append("  auto *h = new {}(call, callback);".format(handler))
-        lines.append("  _pending_{}.push_back(h);".format(struct_name))
-        lines.append("}")
-        lines.append("")
-
-    # ==================================================================
-    # Cleanup helpers
-    # ==================================================================
-    lines.append("static void _cleanup_completed_calls() {")
-    for struct_name, _ in gen_async:
-        vec = "_pending_{}".format(struct_name)
-        lines.append(
-            "  for (auto it = {v}.begin(); it != {v}.end(); ) {{".format(
-                v=vec))
-        lines.append("    if ((*it)->completed) {")
-        lines.append("      delete *it;")
-        lines.append("      it = {}.erase(it);".format(vec))
-        lines.append("    } else {")
-        lines.append("      ++it;")
-        lines.append("    }")
-        lines.append("  }")
-    lines.append("}")
-    lines.append("")
-
-    lines.append("static void _cancel_all_pending_calls() {")
-    for struct_name, _ in gen_async:
-        vec = "_pending_{}".format(struct_name)
-        lines.append("  for (auto *p : {}) delete p;".format(vec))
-        lines.append("  {}.clear();".format(vec))
-    lines.append("}")
-    lines.append("")
-
-    # ==================================================================
-    # Messenger helper (sends Panda3D events from C++)
-    # ==================================================================
-    event_prefix = getattr(cfg, "BROADCAST_EVENT_PREFIX", "Steam-")
-
-    if gen_broadcast:
-        lines.append("// " + "=" * 60)
-        lines.append("// Panda3D messenger integration")
-        lines.append("// " + "=" * 60)
-        lines.append("")
-        lines.append("static PyObject *_py_messenger = nullptr;")
-        lines.append("")
-        lines.append("static void _ensure_messenger() {")
-        lines.append("  if (_py_messenger) return;")
-        lines.append('  PyObject *mod = PyImport_ImportModule('
-                     '"direct.showbase.MessengerGlobal");')
-        lines.append("  if (!mod) { PyErr_Print(); return; }")
-        lines.append('  _py_messenger = PyObject_GetAttrString(mod, '
-                     '"messenger");')
-        lines.append("  Py_DECREF(mod);")
-        lines.append("  if (!_py_messenger) PyErr_Print();")
-        lines.append("}")
-        lines.append("")
-        lines.append("static void _send_event("
-                     "const char *name, PyObject *dict) {")
-        lines.append("  _ensure_messenger();")
-        lines.append("  if (!_py_messenger) return;")
-        lines.append("  PyObject *args_list = PyList_New(1);")
-        lines.append("  Py_INCREF(dict);")
-        lines.append("  PyList_SET_ITEM(args_list, 0, dict);")
-        lines.append('  PyObject *ret = PyObject_CallMethod('
-                     '_py_messenger, "send", "sO", name, args_list);')
-        lines.append("  if (!ret) PyErr_Print();")
-        lines.append("  Py_XDECREF(ret);")
-        lines.append("  Py_DECREF(args_list);")
-        lines.append("}")
-        lines.append("")
-
-    # ==================================================================
-    # Broadcast callback handler
-    # ==================================================================
-    if gen_broadcast:
-        lines.append("// " + "=" * 60)
-        lines.append("// Broadcast callback handler")
-        lines.append("// " + "=" * 60)
-        lines.append("")
-        lines.append("class _BroadcastHandler {")
-        lines.append("public:")
-
-        # Constructor initializer list
-        init_parts = []
-        for struct_name, _ in gen_broadcast:
-            cb = "_cb_{}".format(struct_name)
-            fn = "_On_{}".format(struct_name)
-            init_parts.append(
-                "    {}(this, &_BroadcastHandler::{})".format(cb, fn))
-
-        lines.append("  _BroadcastHandler() :")
-        lines.append(",\n".join(init_parts))
-        lines.append("  {}")
-        lines.append("")
-
-        # Callback handlers -- build dict and send as Panda event
-        for struct_name, struct_data in gen_broadcast:
-            fn = "_On_{}".format(struct_name)
-            event_name = "{}{}".format(event_prefix,
-                                       broadcast_name(struct_name))
-            lines.append("  void {}({} *pParam) {{".format(fn, struct_name))
-
-            _gen_dict_builder(lines, "    ", struct_data, typedefs, enums,
-                              src_var="pParam", include_io_failure=False)
-
-            lines.append('    _send_event("{}", dict);'.format(event_name))
-            lines.append("    Py_DECREF(dict);")
-            lines.append("  }")
-            lines.append("")
-
-        # Private members -- only CCallback instances, no stored PyObject*
-        lines.append("private:")
-        for struct_name, _ in gen_broadcast:
-            cb = "_cb_{}".format(struct_name)
-            lines.append(
-                "  CCallback<_BroadcastHandler, {}, false> {};".format(
-                    struct_name, cb))
-        lines.append("};")
-        lines.append("")
-        lines.append(
-            "static _BroadcastHandler *_g_broadcast_handler = nullptr;")
-        lines.append("")
-
-    # ==================================================================
-    # SteamCallbackManager implementation
-    # ==================================================================
-    lines.append("// " + "=" * 60)
-    lines.append("// SteamCallbackManager implementation")
-    lines.append("// " + "=" * 60)
-    lines.append("")
-
-    # run_callbacks -- auto-inits broadcast handler on first call
-    lines.append("void SteamCallbackManager::run_callbacks() {")
-    if gen_broadcast:
-        lines.append("  if (!_g_broadcast_handler) {")
-        lines.append("    _g_broadcast_handler = new _BroadcastHandler();")
-        lines.append("  }")
-    lines.append("  SteamAPI_RunCallbacks();")
-    lines.append("  _cleanup_completed_calls();")
-    lines.append("}")
-    lines.append("")
-
-    # shutdown
-    lines.append("void SteamCallbackManager::shutdown() {")
-    if gen_broadcast:
-        lines.append("  delete _g_broadcast_handler;")
-        lines.append("  _g_broadcast_handler = nullptr;")
-        lines.append("  Py_XDECREF(_py_messenger);")
-        lines.append("  _py_messenger = nullptr;")
-    lines.append("  _cancel_all_pending_calls();")
-    lines.append("}")
-    lines.append("")
-
-    lines.append("#endif  // CPPPARSER")
-    lines.append("")
-    return "\n".join(lines)
+    return tmpl.render(
+        banner=banner,
+        async_structs=async_structs,
+        broadcast_structs=broadcast_structs,
+    )
