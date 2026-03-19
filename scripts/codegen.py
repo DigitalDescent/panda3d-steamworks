@@ -958,7 +958,13 @@ def _evaluate_const_expr(raw_value, resolved):
                        str(resolved[name]), expr)
 
     try:
-        return eval(expr)    # noqa: S307 – controlled input
+        # Only allow simple numeric expressions composed of literals and
+        # basic operators. Reject anything else before attempting eval.
+        if not re.fullmatch(r"[0-9A-Fa-fxX\s\+\-\*\/%<>&\|\^~\(\)\.]+", expr):
+            return None
+
+        # Evaluate in a restricted environment with no builtins/globals.
+        return eval(expr, {"__builtins__": {}}, {})
     except Exception:
         return None
 
