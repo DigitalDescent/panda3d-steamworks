@@ -17,7 +17,7 @@ pip install panda3d-steamworks
 ```bash
 git clone --recurse-submodules https://github.com/DigitalDescent/panda3d-steamworks.git
 cd panda3d-steamworks
-pip install .
+pip install --no-build-isolation .
 ```
 
 ## Quick start
@@ -58,7 +58,7 @@ git clone --recurse-submodules https://github.com/DigitalDescent/panda3d-steamwo
 cd panda3d-steamworks
 
 # Install in development mode
-pip install -e .
+pip install --no-build-isolation -e .
 
 # Or build a wheel for distribution
 pip install build

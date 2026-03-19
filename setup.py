@@ -11,6 +11,7 @@ This file provides a custom ``build_ext`` command that:
    ``steam_api64.dll``) alongside it so that it is included in the wheel.
 """
 
+import glob
 import multiprocessing
 import os
 import platform
@@ -19,8 +20,37 @@ import subprocess
 import sys
 import sysconfig
 
-from setuptools import Distribution, Extension, setup
+from setuptools import Command, Distribution, Extension, setup
 from setuptools.command.build_ext import build_ext as _build_ext
+try:
+    # setuptools.command.clean was removed in newer setuptools releases.
+    from setuptools.command.clean import clean as _clean
+except ModuleNotFoundError:  # pragma: no cover - depends on setuptools version
+    class _clean(Command):
+        """Compatibility fallback for setuptools versions without clean command."""
+
+        user_options = [
+            ("all", "a", "remove all build output, not just temporary files"),
+        ]
+        boolean_options = ["all"]
+
+        def initialize_options(self):
+            self.all = False
+
+        def finalize_options(self):
+            pass
+
+        def run(self):
+            candidates = [
+                os.path.join(ROOT_DIR, "build"),
+                os.path.join(ROOT_DIR, "dist"),
+            ]
+            candidates.extend(glob.glob(os.path.join(ROOT_DIR, "*.egg-info")))
+
+            for path in candidates:
+                if os.path.isdir(path):
+                    print(f"removing {os.path.relpath(path, ROOT_DIR)}")
+                    shutil.rmtree(path, ignore_errors=True)
 
 # ---------------------------------------------------------------------------
 # Panda3D must be imported first (engine quirk)
@@ -55,7 +85,6 @@ def _ensure_pkg_dir():
     generated, not committed)."""
     pkg = os.path.join(ROOT_DIR, MODULE_NAME)
     os.makedirs(pkg, exist_ok=True)
-    import glob
     for py_file in glob.glob(os.path.join(SOURCE_DIR, "*.py")):
         shutil.copy2(py_file, pkg)
 
@@ -396,6 +425,41 @@ class CMakeBuild(_build_ext):
 
 
 # ---------------------------------------------------------------------------
+# Custom clean command
+# ---------------------------------------------------------------------------
+
+class CleanBindings(_clean):
+    """Remove all generated *_bindings.h and *_bindings.cpp files from
+    source/native as well as the interrogate_module/wrapper files, in addition
+    to performing the standard setuptools clean."""
+
+    description = "remove build artifacts plus generated _bindings and interrogate files"
+
+    def run(self):
+        # First perform the standard setuptools clean behavior.
+        super().run()
+
+        # Then remove generated binding and interrogate files.
+        native_dir = os.path.join(ROOT_DIR, "source", "native")
+        patterns = [
+            os.path.join(native_dir, "*_bindings.h"),
+            os.path.join(native_dir, "*_bindings.cpp"),
+            os.path.join(native_dir, "interrogate_module.cpp"),
+            os.path.join(native_dir, "interrogate_wrapper.cpp"),
+        ]
+        removed = 0
+        for pattern in patterns:
+            for path in glob.glob(pattern):
+                print(f"removing {os.path.relpath(path, ROOT_DIR)}")
+                os.remove(path)
+                removed += 1
+        if removed:
+            print(f"\nRemoved {removed} generated file(s).")
+        else:
+            print("No generated files to remove.")
+
+
+# ---------------------------------------------------------------------------
 # Force platform-specific wheel tag even though we have no "real" Extension
 # ---------------------------------------------------------------------------
 
@@ -414,6 +478,6 @@ setup(
         # package so __init__.py can do ``from panda3d_steamworks.native import *``.
         CMakeExtension("panda3d_steamworks.native"),
     ],
-    cmdclass={"build_ext": CMakeBuild},
+    cmdclass={"build_ext": CMakeBuild, "clean": CleanBindings},
     distclass=BinaryDistribution,
 )

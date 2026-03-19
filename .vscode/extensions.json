@@ -3,6 +3,7 @@
         "ms-python.python",
         "ms-vscode.cmake-tools",
         "ms-vscode.cpp-devtools",
-        "ms-vscode.cpptools"
+        "ms-vscode.cpptools",
+        "samuelcolvin.jinjahtml"
     ]
 }
