@@ -56,10 +56,10 @@ SteamNetworkManager *SteamNetworkManager::get_global_ptr() {
 //               port.  Returns a connection handle that remote
 //               peers can connect to via connect_by_ip_address.
 ////////////////////////////////////////////////////////////////////
-SteamNetworkConnectionHandle SteamNetworkManager::create_ip_socket(int port) {
+SteamNetworkListenSocketHandle SteamNetworkManager::create_ip_socket(int port) {
     if (_interface == nullptr) {
         steam_cat.error() << "SteamNetworkingSockets interface not initialised." << std::endl;
-        return INVALID_STEAM_NETWORK_CONNECTION_HANDLE;
+        return INVALID_STEAM_NETWORK_LISTEN_SOCKET_HANDLE;
     }
 
     SteamNetworkingIPAddr local_addr;
@@ -70,7 +70,7 @@ SteamNetworkConnectionHandle SteamNetworkManager::create_ip_socket(int port) {
     opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void *)OnSteamNetConnectionStatusChanged);
 
     HSteamListenSocket listen_socket = _interface->CreateListenSocketIP(local_addr, 1, &opt);
-    return static_cast<SteamNetworkConnectionHandle>(listen_socket);
+    return static_cast<SteamNetworkListenSocketHandle>(listen_socket);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -79,17 +79,17 @@ SteamNetworkConnectionHandle SteamNetworkManager::create_ip_socket(int port) {
 //  Description: Creates a P2P listen socket on the given virtual
 //               port.  Remote peers connect via connect_by_steam_id.
 ////////////////////////////////////////////////////////////////////
-SteamNetworkConnectionHandle SteamNetworkManager::create_steam_id_socket(int port) {
+SteamNetworkListenSocketHandle SteamNetworkManager::create_steam_id_socket(int port) {
     if (_interface == nullptr) {
         steam_cat.error() << "SteamNetworkingSockets interface not initialised." << std::endl;
-        return INVALID_STEAM_NETWORK_CONNECTION_HANDLE;
+        return INVALID_STEAM_NETWORK_LISTEN_SOCKET_HANDLE;
     }
 
     SteamNetworkingConfigValue_t opt;
     opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void *)OnSteamNetConnectionStatusChanged);
 
     HSteamListenSocket listen_socket = _interface->CreateListenSocketP2P(port, 1, &opt);
-    return static_cast<SteamNetworkConnectionHandle>(listen_socket);
+    return static_cast<SteamNetworkListenSocketHandle>(listen_socket);
 }
 
 ////////////////////////////////////////////////////////////////////
