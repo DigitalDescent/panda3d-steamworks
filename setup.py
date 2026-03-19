@@ -22,7 +22,35 @@ import sysconfig
 
 from setuptools import Command, Distribution, Extension, setup
 from setuptools.command.build_ext import build_ext as _build_ext
-from setuptools.command.clean import clean as _clean
+try:
+    # setuptools.command.clean was removed in newer setuptools releases.
+    from setuptools.command.clean import clean as _clean
+except ModuleNotFoundError:  # pragma: no cover - depends on setuptools version
+    class _clean(Command):
+        """Compatibility fallback for setuptools versions without clean command."""
+
+        user_options = [
+            ("all", "a", "remove all build output, not just temporary files"),
+        ]
+        boolean_options = ["all"]
+
+        def initialize_options(self):
+            self.all = False
+
+        def finalize_options(self):
+            pass
+
+        def run(self):
+            candidates = [
+                os.path.join(ROOT_DIR, "build"),
+                os.path.join(ROOT_DIR, "dist"),
+            ]
+            candidates.extend(glob.glob(os.path.join(ROOT_DIR, "*.egg-info")))
+
+            for path in candidates:
+                if os.path.isdir(path):
+                    print(f"removing {os.path.relpath(path, ROOT_DIR)}")
+                    shutil.rmtree(path, ignore_errors=True)
 
 # ---------------------------------------------------------------------------
 # Panda3D must be imported first (engine quirk)
@@ -57,7 +85,6 @@ def _ensure_pkg_dir():
     generated, not committed)."""
     pkg = os.path.join(ROOT_DIR, MODULE_NAME)
     os.makedirs(pkg, exist_ok=True)
-    import glob
     for py_file in glob.glob(os.path.join(SOURCE_DIR, "*.py")):
         shutil.copy2(py_file, pkg)
 
