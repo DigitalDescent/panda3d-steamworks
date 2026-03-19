@@ -1243,6 +1243,7 @@ def run_codegen(root_dir=None, check_only=False):
             methods_info.append((
                 method, kind, bpairs, ret_info, wrapper_params, out_params))
 
+        if methods_info:
             _assign_generated_method_names(iface_name, methods_info)
 
         if not methods_info and not iface_cfg.get("include_api_lifecycle"):
