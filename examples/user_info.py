@@ -105,8 +105,12 @@ def main():
                         help="Open a window displaying the user's avatar")
     args = parser.parse_args()
 
-    window_type = "none" if not args.avatar else None
-    base = SteamShowBase(windowType=window_type)
+    if args.avatar:
+        # Use default onscreen window behavior when showing the avatar.
+        base = SteamShowBase()
+    else:
+        # Headless mode for non-avatar CLI usage.
+        base = SteamShowBase(windowType="none")
 
     steam_id = SteamUser.get_steam_id()
     persona = SteamFriends.get_persona_name()
