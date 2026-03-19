@@ -10,7 +10,7 @@
 
 ////////////////////////////////////////////////////////////////////
 //       Class : SteamNetworkEvent
-// Description : Represents a single callback event for a connnection state change.
+// Description : Represents a single callback event for a connection state change.
 ////////////////////////////////////////////////////////////////////
 class EXPORT_CLASS SteamNetworkEvent : public ReferenceCount {
 public:

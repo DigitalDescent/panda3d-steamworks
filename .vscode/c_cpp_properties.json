@@ -5,8 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/source/native",
                 "${workspaceFolder}/thirdparty/steamworks/public",
-                "C:/Panda3D-1.11.0-x64/include",
-                "C:/Panda3D-1.11.0-x64/python/include"
+                "${env:PANDA3D_DIR}/include",
+                "${env:PANDA3D_DIR}/python/include"
             ],
             "defines": [
                 "_WIN32",

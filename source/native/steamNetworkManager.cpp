@@ -21,8 +21,9 @@ SteamNetworkManager *SteamNetworkManager::_global_ptr = nullptr;
 //     Function: SteamNetworkManager::SteamNetworkManager
 //       Access: Published
 //  Description: Default constructor.  Initialises the Steam
-//               GameSockets interface and registers this as the
-//               global manager when none exists yet.
+//               GameSockets interface.  This does not automatically
+//               register the instance as the global manager; use
+//               get_global_ptr() to access the global instance.
 ////////////////////////////////////////////////////////////////////
 SteamNetworkManager::SteamNetworkManager() {
     _client_connection = 0;
