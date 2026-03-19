@@ -151,33 +151,22 @@ jobs:
         # bin/ has interrogate + runtime DLLs (Windows)
         echo "$GITHUB_WORKSPACE/panda3d-src/built/bin" >> "$GITHUB_PATH"
 
-    - name: Create thirdparty compatibility junctions (Windows)
+    - name: Export thirdparty path (Windows)
       if: runner.os == 'Windows'
       shell: powershell
       run: |
-        # get_win_thirdparty_dir() searches for "thirdparty/win-libs" relative
-        # to the SDK path (panda3d-src/built/).  The actual thirdparty folder
-        # is panda3d-src/thirdparty/win-libs-vc14-x64.
-        # Create one direct junction at the exact searched path.
-        $realTP = (Resolve-Path "panda3d-src\thirdparty\win-libs-vc14-x64").Path
-        $builtTPDir = "panda3d-src\built\thirdparty"
-        $link = "$builtTPDir\win-libs"
-
-        # Ensure the built/thirdparty directory exists (as a real dir, not a junction)
-        if (Test-Path $builtTPDir) {
-          # If it's a junction from a previous run, remove it first
-          $item = Get-Item $builtTPDir -Force
-          if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-            $item.Delete()
-          }
+        # Detect the win-libs directory regardless of its exact vc-suffix name
+        # and export it so setup.py can skip unreliable auto-discovery.
+        $tpDir = Get-ChildItem "panda3d-src\thirdparty" -Directory `
+          | Where-Object { $_.Name -like 'win-libs*' } `
+          | Select-Object -First 1
+        if (-not $tpDir) {
+          Write-Error "No win-libs* directory found under panda3d-src\thirdparty"
+          exit 1
         }
-        New-Item -ItemType Directory -Force -Path $builtTPDir | Out-Null
-
-        # Create the single junction: built/thirdparty/win-libs → real thirdparty dir
-        if (!(Test-Path $link)) {
-          New-Item -ItemType Junction -Path $link -Target $realTP | Out-Null
-        }
-        Write-Host "Junction: $link -> $realTP"
+        $fullPath = $tpDir.FullName
+        "PANDA3D_THIRDPARTY_DIR=$fullPath" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+        Write-Host "PANDA3D_THIRDPARTY_DIR=$fullPath"
 
     # ── 9. Build the panda3d-steamworks wheel ──────────────────────────────
     - name: Install Python build tools

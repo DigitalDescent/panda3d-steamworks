@@ -13,7 +13,7 @@ import platform
 import shutil
 
 from os.path import dirname, realpath, join, isdir, isfile
-from os import makedirs
+from os import makedirs, environ
 from sys import argv, stdout, stderr, exit
 from panda3d.core import PandaSystem, Filename, ExecutionEnvironment
 
@@ -428,6 +428,11 @@ def have_freetype():
 
 def get_win_thirdparty_dir():
     """ Returns the path of the thirdparty directory, windows only """
+    # Allow an explicit override (e.g. set by CI) to skip auto-discovery.
+    env_override = environ.get("PANDA3D_THIRDPARTY_DIR", "")
+    if env_override and isdir(env_override):
+        return realpath(env_override)
+
     msvc_suffix = get_panda_msvc_version().suffix
 
     # The thirdparty directory is named "vc14" for example instead of "vc140"
