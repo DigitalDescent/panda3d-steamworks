@@ -7,7 +7,7 @@ name = "panda3d-steamworks"
 dynamic = ["version"]
 description = "Steamworks SDK integration for the Panda3D game engine"
 readme = "README.md"
-license = {text = "MIT"}
+license = {file = "LICENSE"}
 requires-python = ">=3.9"
 dependencies = ["panda3d"]
 classifiers = [
