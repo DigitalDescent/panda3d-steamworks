@@ -417,6 +417,12 @@ def classify_method(method, typedefs, enums):
     if (buffer_pairs and out_params) or (bytes_pairs and out_params) or (bytes_pairs and buffer_pairs):
         return SKIP, [], []
 
+    # BYTES_BUFFER methods are only supported when there is exactly one bytes pair.
+    # The generator later assumes a single (uint8*, size) buffer when emitting wrappers.
+    # If multiple such buffers are present, skip the method to avoid incorrect wrappers.
+    if len(bytes_pairs) > 1:
+        return SKIP, [], []
+
     # Check that all non-buffer params can be resolved
     skip_indices = set()
     for ci, si in buffer_pairs:
