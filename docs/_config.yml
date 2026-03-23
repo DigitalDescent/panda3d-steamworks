@@ -11,6 +11,11 @@ remote_theme: digitaldescent/digital-descent-docs@main
 color_scheme: digital-descent
 permalink: pretty
 
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+  - jekyll-include-cache
+
 aux_links:
   "GitHub":
     - "https://github.com/DigitalDescent/panda3d-steamworks"
