@@ -1,0 +1,3 @@
+--eventpath .github/event.json
+--matrix os:ubuntu-latest
+--matrix python-version:3.14

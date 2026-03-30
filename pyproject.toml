@@ -9,7 +9,6 @@ description = "Steamworks SDK integration for the Panda3D game engine"
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.9"
-dependencies = ["panda3d"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -18,8 +17,6 @@ classifiers = [
     "Operating System :: MacOS",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -39,3 +36,42 @@ packages = ["panda3d_steamworks"]
 
 [tool.setuptools.package-data]
 panda3d_steamworks = ["*.pyd", "*.so", "*.dll", "*.dylib", "*.pdb"]
+
+# ── cibuildwheel ─────────────────────────────────────────────────────────────
+[tool.cibuildwheel]
+skip = "pp*"
+build-verbosity = 1
+
+before-build = "pip install panda3d-interrogate"
+
+# Panda3D SDK (built from source) must be on PYTHONPATH so setup.py can
+# `import panda3d.core`.  The SDK is built once per container/host by
+# before-all and lives at {project}/panda3d-src/built.
+[tool.cibuildwheel.environment]
+PYTHONPATH = "{project}/panda3d-src/built"
+PATH = "{project}/panda3d-src/built/bin:$PATH"
+
+[tool.cibuildwheel.linux]
+before-all = [
+    "yum install -y cmake3 bison flex eigen3-devel freetype-devel libjpeg-turbo-devel libpng-devel openssl-devel libvorbis-devel zlib-devel mesa-libGL-devel libX11-devel libXrandr-devel",
+    "ln -sf /usr/bin/cmake3 /usr/local/bin/cmake",
+    "cd /project && git clone --depth 1 https://github.com/panda3d/panda3d.git panda3d-src || true",
+    "cd /project/panda3d-src && python makepanda/makepanda.py --outputdir built --everything --no-eigen --python-incdir \"$(python -c 'import sysconfig; print(sysconfig.get_path(\"include\"))')\" --python-libdir \"$(python -c 'import sysconfig; print(sysconfig.get_config_var(\"LIBDIR\"))')\" --threads $(nproc)",
+]
+environment = { PYTHONPATH = "/project/panda3d-src/built", LD_LIBRARY_PATH = "/project/panda3d-src/built/lib", PATH = "/project/panda3d-src/built/bin:$PATH" }
+
+[tool.cibuildwheel.macos]
+before-all = [
+    "brew install cmake eigen",
+    "cd {project} && git clone --depth 1 https://github.com/panda3d/panda3d.git panda3d-src || true",
+    "cd {project}/panda3d-src && python makepanda/makepanda.py --outputdir built --everything --no-eigen --python-incdir \"$(python -c 'import sysconfig; print(sysconfig.get_path(\"include\"))')\" --python-libdir \"$(python -c 'import sysconfig; print(sysconfig.get_config_var(\"LIBDIR\"))')\" --threads $(sysctl -n hw.ncpu)",
+]
+environment = { PYTHONPATH = "{project}/panda3d-src/built", DYLD_LIBRARY_PATH = "{project}/panda3d-src/built/lib", PATH = "{project}/panda3d-src/built/bin:$PATH" }
+
+[tool.cibuildwheel.windows]
+before-all = [
+    "git clone --depth 1 https://github.com/panda3d/panda3d.git panda3d-src",
+    "cd panda3d-src && curl -sLo thirdparty.zip https://www.panda3d.org/download/panda3d-1.10.16/panda3d-1.10.16-tools-win64.zip && tar -xf thirdparty.zip && move panda3d-1.10.16\\thirdparty thirdparty",
+    "cd panda3d-src && python makepanda/makepanda.py --outputdir built --everything --no-eigen --windows-sdk=10 --msvc-version=14.3 --threads %NUMBER_OF_PROCESSORS%",
+]
+environment = { PYTHONPATH = "{project}\\panda3d-src\\built", PATH = "{project}\\panda3d-src\\built\\bin;$PATH" }

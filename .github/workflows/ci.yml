@@ -1,0 +1,199 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# CI / CD – Build Panda3D from source (cached), compile steamworks wheels,
+# and publish to PyPI on tagged releases.
+# ──────────────────────────────────────────────────────────────────────────────
+name: Continuous Integration
+on:
+  push:
+    branches: [master, main]
+    tags: ["v*"]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+    inputs:
+      panda3d_ref:
+        description: "Panda3D git ref (branch / tag / SHA)"
+        default: "master"
+        type: string
+
+env:
+  # Panda3D source to build against.  Override via workflow_dispatch input.
+  PANDA3D_REF: ${{ inputs.panda3d_ref || 'master' }}
+  # Panda3D thirdparty tools version (for Windows & macOS native deps).
+  P3D_TOOLS_VER: "1.10.16"
+
+permissions:
+  contents: write
+
+# ══════════════════════════════════════════════════════════════════════════════
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Build wheels
+  # ────────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build / ${{ matrix.os }}
+    if: >-
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[ci skip]')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: 
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-15-intel
+          - macos-latest
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+          fetch-depth: 0
+
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v6
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==3.4.0
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+      - uses: actions/upload-artifact@v6
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Deploy documentation to GitHub Pages (main/master pushes only)
+  # ────────────────────────────────────────────────────────────────────────────
+  docs:
+    name: Deploy / Documentation
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    permissions:
+      pages: write
+      id-token: write
+
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Generate API docs
+      run: python scripts/codegen_docs.py
+
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: "3.4"
+        bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+        cache-version: 0 # Increment this number if you need to re-download cached gems
+        working-directory: docs
+        
+    - name: Setup Pages
+      id: pages
+      uses: actions/configure-pages@v5
+
+    - name: Build with Jekyll
+      working-directory: docs
+      run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}" --destination "${{ github.workspace }}/_site"
+      env:
+        JEKYLL_ENV: production
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v4
+      with:
+        path: _site
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Publish to PyPI
+  #   • main/master pushes: pre-release packages (X.Y.Z.devN)
+  #   • v* tags: stable releases (X.Y.Z)
+  # ────────────────────────────────────────────────────────────────────────────
+  publish:
+    name: Deploy / PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      (
+        startsWith(github.ref, 'refs/tags/v') ||
+        github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/master'
+      )
+
+    permissions:
+      id-token: write          # required for trusted publishing
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/panda3d-steamworks
+
+    steps:
+    - name: Download all wheel artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        pattern: cibw-wheels-*
+        merge-multiple: true
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dist/
+        skip-existing: true
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # GitHub Release (tagged releases only)
+  # ────────────────────────────────────────────────────────────────────────────
+  github-release:
+    name: Deploy / GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write          # required to create releases
+
+    steps:
+    - name: Download all wheel artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        pattern: cibw-wheels-*
+        merge-multiple: true
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: ${{ github.ref_name }}
+        generate_release_notes: true
+        files: dist/*.whl
+
